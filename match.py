@@ -13,6 +13,7 @@ class Match:
         self.team_two = []
         self.winner = None
         self.player_stats = {}
+        self.player_elos = {}
 
         self.match_elo = None
         self.team_one_elo = None
@@ -21,7 +22,7 @@ class Match:
     def match_parse(self, data):
         
         self.game_mode = data["game_mode"]
-        self.number_of_rounds = data["round_stats"]
+        self.number_of_rounds = int(data["round_stats"]["Rounds"])
         self.map = data["round_stats"]["Map"].split("/")[-1]
         self.team_one_score = data["teams"][0]["team_stats"]["Final Score"]
         self.team_two_score = data["teams"][1]["team_stats"]["Final Score"]
@@ -45,7 +46,13 @@ class Match:
 
             self.player_stats[player] = player_stats
 
+            for stat in self.player_stats[player].keys():
+                self.player_stats[player][stat] = float(self.player_stats[player][stat])
+
     def match_elo_calc(self, player_dict):
+
+        for player in self.players:
+            self.player_elos[player] = [player_dict[player].elo]
         
         self.team_one_elo = sum([player_dict[player].elo for player in self.team_one]) / len(self.team_one)
         self.team_two_elo = sum([player_dict[player].elo for player in self.team_two]) / len(self.team_two)
@@ -78,7 +85,8 @@ class Match:
 
     def player_elo_reward_calc(self, player, performance_target, team):
         
-        performance_ratio = min(1.5, max((0.5, self.player_stats[player]["Kills"] / self.number_of_rounds) / performance_target)) # Between 0.5 and 1.5
+        performance_ratio = min(1.5, max(0.5, ((self.player_stats[player]["Kills"] / self.number_of_rounds) / performance_target))) # Between 0.5 and 1.5
+        
 
         win = performance_ratio * [self.team_one_elo, self.team_two_elo][team - 1]
         loss = - (abs(performance_ratio - 2)) * [self.team_two_elo, self.team_one_elo][team - 1]
@@ -102,6 +110,21 @@ class Match:
         current_match.team_reward_cals()
         for player in current_match.players:
             current_match.player_performance_target(player, player_dict)
+        winning_team = [current_match.team_one, current_match.team_two][current_match.winner - 1]
+        losing_team = [current_match.team_two, current_match.team_one][current_match.winner - 1]
+        for player in winning_team:
+            team = 1 + (player in current_match.team_two)
+            player_performance_target = current_match.player_performance_target(player, player_dict)
+            _, win_elo = current_match.player_elo_reward_calc(player, player_performance_target, team)
+            player_dict[player].elo += win_elo
+            player_dict[player].elo_history.append(player_dict[player].elo)
+        for player in losing_team:
+            team = 1 + (player in current_match.team_two)
+            player_performance_target = current_match.player_performance_target(player, player_dict)
+            lose_elo, _ = current_match.player_elo_reward_calc(player, player_performance_target, team)
+            player_dict[player].elo += lose_elo
+            player_dict[player].elo_history.append(player_dict[player].elo)
+
         match_dict[match_id] = current_match
 
 

@@ -3,3 +3,5 @@
 matchdict*
 matches*
 stats*
+__pycache__
+.vs

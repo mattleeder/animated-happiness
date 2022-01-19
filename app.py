@@ -81,24 +81,40 @@ def display_scoreboard(match_selector):
 
     current_match = match_dict[match_selector]    
     team_one_data, team_two_data = current_match.scoreboard_data()
+    player_elos = pd.DataFrame.from_dict(current_match.player_elos).T.reset_index()
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
     team_two_df = pd.DataFrame(team_two_data).T.reset_index()
     team_one_df.rename(columns = {"index" : "Player"}, inplace = True)
     team_two_df.rename(columns = {"index" : "Player"}, inplace = True)
+    player_elos.rename(columns = {"index" : "Player"}, inplace = True)
+    cols_order= ["Player", "Kills", "Assists", "Deaths", "Headshots", "Headshots %", "K/D Ratio", "K/R Ratio", "MVPs", "Triple Kills", "Quadro Kills", "Penta Kills", "Result"]
+    team_one_df = team_one_df[cols_order]
+    team_two_df = team_two_df[cols_order]
 
-    return html.Div([html.H3("Team One"),
+    return html.Div([html.H3(f"Team One - Average Elo : {current_match.team_one_elo}"),
                    dash.dash_table.DataTable(
                                     id='table',
                                     columns=[{"name": i, "id": i} for i in team_one_df.columns],
                                     data=team_one_df.to_dict('records'),
+                                    sort_action = "native",
+                                    sort_mode = "single",
+                                    sort_by = ["Kills"]
                                 ),
-                    html.H3("Team Two"),
+                    html.H3(f"Team Two - Average Elo : {current_match.team_two_elo}"),
                     dash.dash_table.DataTable(
                                     id='table',
                                     columns=[{"name": i, "id": i} for i in team_two_df.columns],
                                     data=team_two_df.to_dict('records'),
+                                    sort_action = "native",
+                                    sort_mode = "single",
+                                    sort_by = ["Kills"]
                                 ),
-                    html.H6(f"https://www.faceit.com/en/csgo/room/{match_selector}/scoreboard")
+                    html.H6(f"https://www.faceit.com/en/csgo/room/{match_selector}/scoreboard"),
+                    dash.dash_table.DataTable(
+                        id = "table",
+                        columns=[{"name": i, "id": i} for i in player_elos.columns],
+                        data = player_elos.to_dict("records")
+                    )
                                 ])
 
 
@@ -187,7 +203,7 @@ def render_content(tab):
                         html.Div([dcc.Dropdown(id = "match_selector",
                                             options = [{"label" : x, "value" : x} for x in match_list],
                                             multi = False,
-                                            value = match_list[-1])
+                                            value = match_list[0])
                                             ]),
                         html.Div(id = "scoreboard-container", children = [
                                 # dash.dash_table.DataTable(id = "scoreboard")

@@ -175,7 +175,7 @@ def full_match_loop(api_key, hub_id, offset, actual_limit, player_dict, match_di
     
     match_id_list = get_full_match_list(api_key, hub_id, offset, actual_limit)
     
-    for match_id in match_id_list:
+    for match_id in match_id_list[::-1]:
         print(match_id)
         match_data_to_class(api_key, match_id, player_dict, match_dict)
 

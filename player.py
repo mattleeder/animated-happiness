@@ -24,6 +24,7 @@ class Player:
                       'Quadro Kills': [],
                       'Kills': []}
         self.elo = 1000
+        self.elo_history = []
 
     def stat_parse(self, match_id, total_rounds, match_map, statistics, insert = False):
         
