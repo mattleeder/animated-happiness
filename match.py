@@ -1,6 +1,10 @@
+import requests
+from elo import Elo
+
 class Match:
 
-    def __init__(self, match_id):
+    def __init__(self, match_id, api_key):
+        self.api_key = api_key
 
         self.match_id = match_id
         self.game_mode = None
@@ -49,40 +53,6 @@ class Match:
             for stat in self.player_stats[player].keys():
                 self.player_stats[player][stat] = float(self.player_stats[player][stat])
 
-    def match_elo_calc(self, player_dict):
-
-        for player in self.players:
-            self.player_elos[player] = [player_dict[player].elo]
-        
-        self.team_one_elo = sum([player_dict[player].elo for player in self.team_one]) / len(self.team_one)
-        self.team_two_elo = sum([player_dict[player].elo for player in self.team_two]) / len(self.team_two)
-        self.match_elo = (self.team_one_elo + self.team_two_elo) / len(self.players)
-
-    def team_reward_cals(self):
-
-        team_one_elo_diff = self.team_one_elo - self.match_elo
-        team_two_elo_diff = self.team_two_elo - self.match_elo
-
-        self.team_one_elo_reward = min(245, max(125 - team_one_elo_diff, 5)) # Max reward 245, min 5
-        self.team_two_elo_reward = min(245, max(125 - team_two_elo_diff, 5))
-
-    def player_performance_target(self, player, player_dict):
-
-        # Performance metric = Kills per round
-
-        # Write something that uses a logarithmic calculation to give players a performance target; possibly make use of hub average performance
-
-        max_elo_diff = 400 # If you are 400 elo above match elo, target increased by 50%, 400 below target reduced by 50%
-
-        performance_average = 1
-
-        player_elo_diff = player_dict[player].elo - self.match_elo
-
-        target_multiplier = max(min(player_elo_diff - max_elo_diff, max_elo_diff), -max_elo_diff)
-        target_multiplier = 1 + (target_multiplier / (max_elo_diff * 2))
-
-        return performance_average * target_multiplier
-
     def player_elo_reward_calc(self, player, performance_target, team):
         
         performance_ratio = min(1.5, max(0.5, ((self.player_stats[player]["Kills"] / self.number_of_rounds) / performance_target))) # Between 0.5 and 1.5
@@ -100,32 +70,25 @@ class Match:
 
         return team_one_data, team_two_data
 
+
     @classmethod
-    def full_parse(self, match_id, match_data, player_dict, match_dict):
+    def full_parse(self, api_key, match_id, match_data, player_dict, match_dict):
         if match_data is None:
             return None
-        current_match = Match(match_id)
+        current_match = Match(match_id, api_key)
         current_match.match_parse(match_data)
-        current_match.match_elo_calc(player_dict)
-        current_match.team_reward_cals()
-        for player in current_match.players:
-            current_match.player_performance_target(player, player_dict)
+        current_match_elo = Elo(current_match.team_one, current_match.team_two, player_dict)
+        current_match.match_elo = current_match_elo._match_elo
+        current_match.team_one_elo = current_match_elo.team_one_elo
+        current_match.team_two_elo = current_match_elo.team_two_elo
         winning_team = [current_match.team_one, current_match.team_two][current_match.winner - 1]
-        losing_team = [current_match.team_two, current_match.team_one][current_match.winner - 1]
-        for player in winning_team:
-            team = 1 + (player in current_match.team_two)
-            player_performance_target = current_match.player_performance_target(player, player_dict)
-            _, win_elo = current_match.player_elo_reward_calc(player, player_performance_target, team)
-            player_dict[player].elo += win_elo
+        for player in current_match.players:
+            current_match.player_elos[player] = [player_dict[player].elo]
+            elo_change = current_match_elo.elo_changes(player, current_match.player_stats[player], (player in winning_team))
+            player_dict[player].elo += elo_change
             player_dict[player].elo_history.append(player_dict[player].elo)
-        for player in losing_team:
-            team = 1 + (player in current_match.team_two)
-            player_performance_target = current_match.player_performance_target(player, player_dict)
-            lose_elo, _ = current_match.player_elo_reward_calc(player, player_performance_target, team)
-            player_dict[player].elo += lose_elo
-            player_dict[player].elo_history.append(player_dict[player].elo)
-
         match_dict[match_id] = current_match
+
 
 
     @classmethod
@@ -134,7 +97,29 @@ class Match:
 
         pass
 
+    def match_stats(self):
+        """
+        Gets full match stats (game_id, best_of, player stats etc.) for a specific match on faceit.
 
+        Returns
+        -------
 
+        match_data : dict JSON
+                JSON containing statistics about the match.
+        """
+        
+        url = f"https://open.faceit.com/data/v4/matches/{self.match_id}/stats"
+        response = requests.get(url, headers = {"Authorization" : "Bearer " + self.api_key})
+        
+        # Why is this here? To catch KeyError when response does not contain "rounds"
 
+        try:
 
+            match_data = response.json()["rounds"][0]
+            if response.status_code == 404:
+                    return None
+            return match_data
+        
+        except:
+            
+            return None

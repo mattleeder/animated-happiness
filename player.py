@@ -4,6 +4,8 @@ import numpy as np
 
 
 class Player:
+
+    # self.player_dict = player_dict
     
     def __init__(self, name):
         
@@ -46,19 +48,18 @@ class Player:
             for statistic in statistics:
                 self.stats[statistic].insert(0, float(statistics[statistic]))
             
-    def avg_last_n_matches(self, n, stat, per_round = 0):
+    def avg_last_n_matches(self, n, stat, per_round = False):
         
         total = sum(self.stats[stat][0:n])
         
-        if per_round == 1:
+        if per_round:
             total_rounds = sum(self.stats["Number of Rounds"][0:n])
             total /= total_rounds
             
             return total
-        else:
-            total /= n
-            
-            return total
+
+        total /= n
+        return total
 
     def stats_last_n_matches(self, n, stat, per_round = False):
 
@@ -66,7 +67,7 @@ class Player:
 
         if per_round:
             rounds = self.stats["Number of Rounds"][0:n]
-            return [s / r for s,r in zip(stats, rounds)]
+            return [s / r for s, r in zip(stats, rounds)]
         
         return stats
         
@@ -79,9 +80,7 @@ class Player:
     def linear_regression(self, stat, n, per_round = False):
 
         lm = linear_model.LinearRegression()
-
         data = self.stats_last_n_matches(n, stat, per_round)
-
         lm.fit(np.array(range(1, n+1)).reshape(-1, 1), data)
 
         return lm.predict(np.array([n+1]).reshape(1, -1))
@@ -116,4 +115,47 @@ class Player:
 
     @classmethod
     def players_df(self):
+        pass
+
+    @classmethod
+    def parse_match_data(match_id, match_data, player_dict, insert = False):
+        """
+        Retrieves player stats from match data and adds them to player_dict.
+
+        Parameters
+        ----------
+
+        match_id : str
+                text
+        match_data : dict, JSON
+                text
+        player_dict : dict
+                text
+        insert : bool False
+                text
+
+        Returns
+        -------
+
+        None
+
+        """
+        
+        if match_data == None:
+            
+            return None
+        
+        total_rounds = match_data["round_stats"]["Rounds"]
+        match_map = match_data["round_stats"]["Map"]
+        
+        for team in match_data["teams"]:
+            for player in team["players"]:
+                    if player["nickname"] not in player_dict.keys():
+                        player_dict[player["nickname"]] = Player(player["nickname"])
+                    player_dict[player["nickname"]].stat_parse(match_id, total_rounds, match_map, player["player_stats"], insert)
+
+        return None
+
+    @classmethod
+    def from_player_id(self, player_id):
         pass

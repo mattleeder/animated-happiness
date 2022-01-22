@@ -11,7 +11,7 @@ import plotly.express as px
 from dash.dependencies import Input, Output
 
 app = dash.Dash(__name__, title = "CSGO Dashboard", update_title="Loading...")
-player_dict, match_list, match_dict = cmdargparse.main()
+player_dict, match_list, match_dict, default_player = cmdargparse.main()
 colours = {
     "background" : "#111111",
     "text" : "#7FDBFF"
@@ -153,7 +153,7 @@ def render_content(tab):
                                                     dcc.Dropdown(id = 'player_name_dropdown', 
                                                                 options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
                                                                 multi = True,
-                                                                value = cmdargparse.default_player
+                                                                value = [default_player]
                                                                 )],
                                                     style={"backgroundColor" : colours["background"]},
                                                     className = "eight columns"
