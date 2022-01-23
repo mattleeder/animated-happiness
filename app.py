@@ -25,34 +25,24 @@ def graph_update(player_name_dropdown, stat_name_dropdown, n_recent_matches):
 
     n = n_recent_matches
 
-    data = Player("").stats
+    data = {}
     data["Player"] = []
     data["Match Number"] = []
+    data[stat_name_dropdown] = []
 
     for player in player_name_dropdown:
 
         matches = min(n, len(player_dict[player].stats["Match ID"]))
         data["Player"].extend([player] * matches)
-        data["Match Number"].extend(list(range(n, n - matches, -1)))
+        data["Match Number"].extend(list(range(n - matches, n)))
 
-        for stat in Player("").stats.keys():
-
-            data[stat].extend(player_dict[player].stats[stat][:n])
+        stat_list = player_dict[player].stats[stat_name_dropdown][-n:]
+        data[stat_name_dropdown].extend(stat_list)
 
     df = pd.DataFrame(data)
 
-    # fig = go.Figure()
-
     fig = px.line(df,x = "Match Number", y = stat_name_dropdown, color = "Player")
-
-    # for player in player_name_dropdown:
-    #     fig.add_scatter(x = df.loc[df["Player"] == player, "Match Number"], 
-    #                     y = df.loc[df["Player"] == player, stat_name_dropdown],
-    #                     name = player,
-    #                     mode = "lines",
-    #                     title = "test")
         
-
     fig.update_layout(
         plot_bgcolor = colours["background"],
         paper_bgcolor = colours["background"],
@@ -74,6 +64,31 @@ def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, 
 
     return dash.dash_table.DataTable(id = "table-output", columns = columns, data = data)
 
+@app.callback(Output(component_id='match-selector', component_property= 'children'),
+            [Input(component_id='player_filter', component_property='value')])
+def match_selector(player_filter):
+    if player_filter == "All":
+        return html.Div([dcc.Dropdown(id = "match_selector",
+                                    options = [{"label" : x, "value" : x} for x in match_list],
+                                    multi = False,
+                                    value = match_list[0])
+                                    ])
+
+    # ops = [{"label" : x, "value" : x} for x in match_list if player_filter in match_dict[x].players]
+    ops = []
+    for x in match_list:
+        try:
+            if player_filter in match_dict[x].players:
+                ops.append({"label" : x, "value" : x})
+        except KeyError:
+            pass
+
+
+    return html.Div([dcc.Dropdown(id = "match_selector",
+                                options = ops,
+                                multi = False,
+                                value = ops[0]["value"])
+                                ])
 
 @app.callback(Output(component_id='scoreboard-container', component_property= 'children'),
             [Input(component_id='match_selector', component_property= 'value')])
@@ -81,7 +96,8 @@ def display_scoreboard(match_selector):
 
     current_match = match_dict[match_selector]    
     team_one_data, team_two_data = current_match.scoreboard_data()
-    player_elos = pd.DataFrame.from_dict(current_match.player_elos).T.reset_index()
+    player_elos = pd.DataFrame.from_dict(current_match.player_elo_data).T.reset_index()
+    player_elos = player_elos.round({'Elo': 0, 'Elo Change': 1, "Performance Target" : 2, "Performance Actual" : 2})
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
     team_two_df = pd.DataFrame(team_two_data).T.reset_index()
     team_one_df.rename(columns = {"index" : "Player"}, inplace = True)
@@ -91,7 +107,7 @@ def display_scoreboard(match_selector):
     team_one_df = team_one_df[cols_order]
     team_two_df = team_two_df[cols_order]
 
-    return html.Div([html.H3(f"Team One - Average Elo : {current_match.team_one_elo}"),
+    return html.Div([html.H3(f"Team One - Average Elo : {round(current_match.team_one_elo)}"),
                    dash.dash_table.DataTable(
                                     id='table',
                                     columns=[{"name": i, "id": i} for i in team_one_df.columns],
@@ -100,7 +116,7 @@ def display_scoreboard(match_selector):
                                     sort_mode = "single",
                                     sort_by = ["Kills"]
                                 ),
-                    html.H3(f"Team Two - Average Elo : {current_match.team_two_elo}"),
+                    html.H3(f"Team Two - Average Elo : {round(current_match.team_two_elo)}"),
                     dash.dash_table.DataTable(
                                     id='table',
                                     columns=[{"name": i, "id": i} for i in team_two_df.columns],
@@ -111,9 +127,12 @@ def display_scoreboard(match_selector):
                                 ),
                     html.H6(f"https://www.faceit.com/en/csgo/room/{match_selector}/scoreboard"),
                     dash.dash_table.DataTable(
-                        id = "table",
-                        columns=[{"name": i, "id": i} for i in player_elos.columns],
-                        data = player_elos.to_dict("records")
+                                    id = "table",
+                                    columns=[{"name": i, "id": i} for i in player_elos.columns],
+                                    data = player_elos.to_dict("records"),
+                                    sort_action = "native",
+                                    sort_mode = "single",
+                                    sort_by = ["Elo"]
                     )
                                 ])
 
@@ -132,7 +151,7 @@ def display_scoreboard(match_selector):
             Input(component_id="n_recent_matches", component_property="value")])
 def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches, per_round = False):
     per_round = True
-    d = {player : player_dict[player].linear_regression(stat_name_dropdown, n_recent_matches, per_round) for player in player_name_dropdown}
+    d = {player : player_dict[player].linear_regression(stat_name_dropdown, n_recent_matches, per_round).round(2) for player in player_name_dropdown}
     if per_round:
         stat_name_dropdown += " Per Round"
     stat_name_dropdown = "Linear Regression " + stat_name_dropdown
@@ -140,6 +159,50 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
     columns = [{"name" : stat_name_dropdown, "id" : stat_name_dropdown}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(id = "table-output", columns = columns, data = data)
+
+@app.callback(Output(component_id='elo-div', component_property= 'children'),
+            [Input(component_id='player_name_dropdown', component_property= 'value')])
+def elo_table(player_name_dropdown):
+    d = {player : player_dict[player].elo for player in player_name_dropdown}
+    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+
+    return dash.dash_table.DataTable(id = "table-output",
+                                    columns = columns,
+                                    data = data,
+                                    sort_action = "native",
+                                    sort_mode = "single")
+
+def full_elo_table():
+
+    d = {player : player_dict[player].elo for player in player_dict}
+    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+
+    return dash.dash_table.DataTable(id = "table-output",
+                                    columns = columns,
+                                    data = data,
+                                    sort_action = "native",
+                                    sort_mode = "single")
+
+@app.callback(Output(component_id='match-explorer-h3', component_property= 'children'),
+            [Input(component_id='player_filter', component_property='value')])
+def match_explorer_h3_func(player_filter):
+
+    if player_filter == "All":
+        return html.Div([html.H3(f"Match Explorer: {len(match_list)} matches found")])
+    ops = []
+    for x in match_list:
+        try:
+            if player_filter in match_dict[x].players:
+                ops.append({"label" : x, "value" : x})
+        except KeyError:
+            pass
+
+
+    return html.Div([html.H3(f"Match Explorer: {len(ops)} matches found")])
+    
+
 
 
 @app.callback(Output('tabs-content', 'children'),
@@ -192,6 +255,12 @@ def render_content(tab):
                                                     ],
                                                     className = "eight columns",
                                                     style = {"backgroundColor" : colours["background"]}
+                                                    ),
+                                            html.Div(id = "elo-div", children = [
+                                                    dash.dash_table.DataTable(id='elo-table')
+                                                    ],
+                                                    className = "eight columns",
+                                                    style = {"backgroundColor" : colours["background"]}
                                                     )
                                     ])
                                 ]
@@ -199,15 +268,26 @@ def render_content(tab):
 
     elif tab == 'match_explorer':
         return html.Div(id = "match-explorer-main", children = [
-                        html.H3("Match Explorer"),
-                        html.Div([dcc.Dropdown(id = "match_selector",
-                                            options = [{"label" : x, "value" : x} for x in match_list],
+                        html.Div(id = 'match-explorer-h3', children = [
+                                ]),
+                        html.H3("TESTING"),
+                        html.Div([dcc.Dropdown(id = "player_filter",
+                                            options = [{"label" : "All", "value" : "All"}] + [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
                                             multi = False,
-                                            value = match_list[0])
+                                            value = "All")
                                             ]),
+                        html.Div(id = 'match-selector', children = [
+                                ]),
+
                         html.Div(id = "scoreboard-container", children = [
                                 # dash.dash_table.DataTable(id = "scoreboard")
                                 ])
+        ])
+    
+    elif tab == 'elo-tab':
+        return html.Div(id = 'elo-tab-main', children = [
+            html.H3("Elo"),
+            html.Div(id = 'elo-table-container', children = full_elo_table())
         ])
 
 
@@ -218,9 +298,10 @@ def main():
 
     app.layout = html.Div([
     html.H1(f"CSGO Dashboard - Number of matches: {len(match_list)}", className = "banner"),
-    dcc.Tabs(id="tab-selector", value='match_explorer', children=[
+    dcc.Tabs(id="tab-selector", value='homepage', children=[
         dcc.Tab(label='Homepage', value='homepage'),
         dcc.Tab(label='Match Explorer', value='match_explorer'),
+        dcc.Tab(label='Elo', value='elo-tab'),
     ]),
     html.Div(id='tabs-content')
 ])

@@ -15,7 +15,7 @@ def main():
 
 
     offset = 0
-    actual_limit = 10000
+    actual_limit = 10_000
 
     with open("keys.txt", "r") as f:
         keys_dict = {}

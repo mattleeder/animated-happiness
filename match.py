@@ -17,7 +17,7 @@ class Match:
         self.team_two = []
         self.winner = None
         self.player_stats = {}
-        self.player_elos = {}
+        self.player_elo_data = {}
 
         self.match_elo = None
         self.team_one_elo = None
@@ -53,16 +53,6 @@ class Match:
             for stat in self.player_stats[player].keys():
                 self.player_stats[player][stat] = float(self.player_stats[player][stat])
 
-    def player_elo_reward_calc(self, player, performance_target, team):
-        
-        performance_ratio = min(1.5, max(0.5, ((self.player_stats[player]["Kills"] / self.number_of_rounds) / performance_target))) # Between 0.5 and 1.5
-        
-
-        win = performance_ratio * [self.team_one_elo, self.team_two_elo][team - 1]
-        loss = - (abs(performance_ratio - 2)) * [self.team_two_elo, self.team_one_elo][team - 1]
-
-        return (loss, win)
-
     def scoreboard_data(self):
 
         team_one_data = {player : self.player_stats[player] for player in self.team_one}
@@ -77,16 +67,22 @@ class Match:
             return None
         current_match = Match(match_id, api_key)
         current_match.match_parse(match_data)
-        current_match_elo = Elo(current_match.team_one, current_match.team_two, player_dict)
+        current_match_elo = Elo(current_match.team_one, current_match.team_two, current_match.player_stats, player_dict)
         current_match.match_elo = current_match_elo._match_elo
         current_match.team_one_elo = current_match_elo.team_one_elo
         current_match.team_two_elo = current_match_elo.team_two_elo
         winning_team = [current_match.team_one, current_match.team_two][current_match.winner - 1]
+        total_elo_change = 0
         for player in current_match.players:
-            current_match.player_elos[player] = [player_dict[player].elo]
-            elo_change = current_match_elo.elo_changes(player, current_match.player_stats[player], (player in winning_team))
+            elo_change, target_performance, actual_performance = current_match_elo.elo_changes(player, (player in winning_team))
+            current_match.player_elo_data[player] = {"Elo" : player_dict[player].elo,
+                                                    "Elo Change" : elo_change,
+                                                    "Performance Target" : target_performance,
+                                                    "Performance Actual" : actual_performance}
+            total_elo_change += elo_change
             player_dict[player].elo += elo_change
             player_dict[player].elo_history.append(player_dict[player].elo)
+        print(f"{total_elo_change = }")
         match_dict[match_id] = current_match
 
 
