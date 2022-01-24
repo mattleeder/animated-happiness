@@ -1,5 +1,6 @@
 from player import Player
 import cmdargparse
+from elo import Elo
 
 import pandas as pd
 
@@ -50,6 +51,15 @@ def graph_update(player_name_dropdown, stat_name_dropdown, n_recent_matches):
     )
 
     return fig
+
+def average_actual_rating():
+    actuals = []
+    for match in match_dict:
+        for player in match_dict[match].player_elo_data.keys():
+            actuals.append(match_dict[match].player_elo_data[player]["Performance Actual"])
+    return sum(actuals) / len(actuals)
+
+    
 
 
 @app.callback(Output(component_id='div2', component_property= 'children'),
@@ -201,7 +211,16 @@ def match_explorer_h3_func(player_filter):
 
 
     return html.Div([html.H3(f"Match Explorer: {len(ops)} matches found")])
-    
+
+@app.callback(Output(component_id='match-create', component_property='children'),
+            [Input(component_id = 'elo-filter', component_property='value')])
+def match_create(players):
+    player_data = [player_dict[player] for player in players]
+    df = Elo.even_match(player_data)
+    data = df.to_dict('records')
+    columns=[{"name": i, "id": i} for i in df.columns]
+
+    return dash.dash_table.DataTable(id = "table-output", columns = columns, data = data)    
 
 
 
@@ -290,6 +309,15 @@ def render_content(tab):
             html.Div(id = 'elo-table-container', children = full_elo_table())
         ])
 
+    elif tab == 'match-create':
+        return html.Div(id = 'match-create-main', children = [
+                                                            html.Div([dcc.Dropdown(id = "elo-filter",
+                                                                                options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
+                                                                                multi = True)
+                                                                                ]),
+                                                            html.Div(id = 'match-create')
+        ])
+
 
 def main():
     
@@ -297,11 +325,12 @@ def main():
     # app.server.static_folder = 'static'  # if you run app.py from 'root-dir-name' you don't need to specify
 
     app.layout = html.Div([
-    html.H1(f"CSGO Dashboard - Number of matches: {len(match_list)}", className = "banner"),
+    html.H1(f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {average_actual_rating()}", className = "banner"),
     dcc.Tabs(id="tab-selector", value='homepage', children=[
         dcc.Tab(label='Homepage', value='homepage'),
         dcc.Tab(label='Match Explorer', value='match_explorer'),
         dcc.Tab(label='Elo', value='elo-tab'),
+        dcc.Tab(label='Match Create', value='match-create'),
     ]),
     html.Div(id='tabs-content')
 ])

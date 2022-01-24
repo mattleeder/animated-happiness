@@ -52,6 +52,7 @@ class Match:
 
             for stat in self.player_stats[player].keys():
                 self.player_stats[player][stat] = float(self.player_stats[player][stat])
+            self.player_stats[player]["Number of Rounds"] = self.number_of_rounds
 
     def scoreboard_data(self):
 
@@ -82,7 +83,6 @@ class Match:
             total_elo_change += elo_change
             player_dict[player].elo += elo_change
             player_dict[player].elo_history.append(player_dict[player].elo)
-        print(f"{total_elo_change = }")
         match_dict[match_id] = current_match
 
 

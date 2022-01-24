@@ -1,9 +1,9 @@
-from soupsieve import match
-
+from itertools import combinations
+import pandas as pd
 
 class Elo:
     
-    performance_average = 1
+    performance_average = 0.3
     max_elo_difference = 400
 
     def __init__(self, team_one, team_two, match_stats, player_dict):
@@ -58,6 +58,7 @@ class Elo:
         player : str
 
         stats : dict
+              {'Kills': 10.0, 'MVPs': 1.0, 'Quadro Kills': 0.0, 'Deaths': 5.0, 'K/D Ratio': 2.0, 'Penta Kills': 0.0, 'K/R Ratio': 0.83, 'Result': 0.0, 'Triple Kills': 1.0, 'Assists': 3.0, 'Headshots': 4.0, 'Headshots %': 40.0, 'Number of Rounds': 12}
 
         Returns
         -------
@@ -65,7 +66,16 @@ class Elo:
         performance_rating : float
         """
 
-        performance_rating = self.match_stats[player]["K/R Ratio"]
+        kpr = self.match_stats[player]["K/R Ratio"]
+        rounds = self.match_stats[player]["Number of Rounds"]
+        dpr = self.match_stats[player]["Deaths"] / rounds
+        assist_per_round = self.match_stats[player]["Assists"] / rounds
+
+        impact = 2.13 * kpr + 0.42 * assist_per_round -0.41
+
+        performance_rating = 0.3591*kpr -0.5329 * dpr + 0.2372 * impact + 0.1587
+
+        # performance_rating = self.match_stats[player]["K/R Ratio"]
 
 
         return performance_rating
@@ -86,9 +96,6 @@ class Elo:
 
         team_target_balancer = (sum(team_target_differential) / len(team))
 
-        print(team)
-        print(f"{team_target_balancer = }")
-
         return team_target_balancer
 
     def elo_changes(self, player, win):
@@ -108,5 +115,25 @@ class Elo:
 
     @classmethod
     def even_match(self, players):
+        player_names = set([player.name for player in players])
+        player_elos = [player.elo for player in players]
+        elo_lookup = {player.name : player.elo for player in players}
 
-        pass
+        target = sum(player_elos) / 2
+        team_elo = []
+        idx = []
+        team_list = []
+        team_two_list = []
+        
+        for i, team in enumerate(list(combinations(player_names, 5))):
+            elo = abs(sum([elo_lookup[player] for player in team]) - target)
+            team_elo.append(elo)
+            idx.append(i)
+            team_one = [str(player) for player in team]
+            team_list.append(", ".join(team_one))
+            team_two = [str(player) for player in player_names.difference(team)]
+            team_two_list.append(", ".join(team_two))
+
+        data = pd.DataFrame({"Elo Difference" : team_elo, "Team 1" : team_list, "Team 2" : team_two_list}, index = idx).sort_values(by = "Elo Difference", ascending = True).head(5)
+
+        return data

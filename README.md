@@ -6,9 +6,8 @@ default_player z
 
 
 
-To Do:
-
-Clean up objects (prune methods, add comparisons between players)
-Make elo data easy to attach to matches, elo gained/lost per player, player performance target and actuals
-Add player filter for matches (only show matches with player x)
-Add elo table
+To Do:  
+  
+Clean up objects (prune methods, add comparisons between players)  
+Make elo data easy to attach to matches, elo gained/lost per player, player performance target and actuals  
+Add ability to create balanced teams an cycle through, or partial assemble teams and have the rest filled out
