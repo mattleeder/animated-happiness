@@ -87,12 +87,10 @@ def match_selector(player_filter):
     # ops = [{"label" : x, "value" : x} for x in match_list if player_filter in match_dict[x].players]
     ops = []
     for x in match_list:
-        try:
+        match = match_dict.get(x, None)
+        if match is not None:
             if player_filter in match_dict[x].players:
                 ops.append({"label" : x, "value" : x})
-        except KeyError:
-            pass
-
 
     return html.Div([dcc.Dropdown(id = "match_selector",
                                 options = ops,
@@ -228,7 +226,7 @@ def match_create(players):
               Input('tab-selector', 'value'))
 def render_content(tab):
     if tab == 'homepage':
-        return html.Div(id = "parent", style = {"backgroundColor" : colours["background"]}, className = "eight columns",
+        return html.Div(id = "parent", style = {"backgroundColor" : colours["background"]}, className = "stylesheet--eight columns",
                         children = [html.Div([
                                             html.Div([html.H2()]),
                                             html.Div([
@@ -238,7 +236,7 @@ def render_content(tab):
                                                                 value = [default_player]
                                                                 )],
                                                     style={"backgroundColor" : colours["background"]},
-                                                    className = "eight columns"
+                                                    className = "stylesheet--eight columns"
                                                     ),
                                             html.Div([
                                                     dcc.Dropdown(id = "stat_name_dropdown", 
@@ -247,11 +245,11 @@ def render_content(tab):
                                                                 value = "Kills"
                                                                 )],
                                                     style={"backgroundColor" : colours["background"]},
-                                                    className = "eight columns"
+                                                    className = "stylesheet--eight columns"
                                                     ),
                                             html.Div([
                                                     dcc.Graph(id = 'scatter')],
-                                                    className = "eight columns"
+                                                    className = "stylesheet--eight columns"
                                                     ),
                                             html.Div([
                                                     dcc.Slider(id = "n_recent_matches",
@@ -260,25 +258,25 @@ def render_content(tab):
                                                             marks={i : f"{i}" for i in range(1, 21)},
                                                             value=10
                                                             )],
-                                                    className = "eight columns",
+                                                    className = "stylesheet--eight columns",
                                                     style = {"backgroundColor" : colours["background"]}
                                                     ),
                                             html.Div(id = "div2", children = [
                                                     dash.dash_table.DataTable(id='ordered_stat_table')
                                                     ],
-                                                    className = "eight columns",
+                                                    className = "stylesheet--eight columns",
                                                     style = {"backgroundColor" : colours["background"]}
                                                     ),
                                             html.Div(id = "div3", children = [
                                                     dash.dash_table.DataTable(id='regression_table')
                                                     ],
-                                                    className = "eight columns",
+                                                    className = "stylesheet--eight columns",
                                                     style = {"backgroundColor" : colours["background"]}
                                                     ),
                                             html.Div(id = "elo-div", children = [
                                                     dash.dash_table.DataTable(id='elo-table')
                                                     ],
-                                                    className = "eight columns",
+                                                    className = "stylesheet--eight columns",
                                                     style = {"backgroundColor" : colours["background"]}
                                                     )
                                     ])
@@ -321,19 +319,27 @@ def render_content(tab):
 
 def main():
     
-    app.css.append_css({'external_url': '/assets/stylesheet.css'})
+    # app.css.append_css({'external_url': '/assets/stylesheet.css'})
     # app.server.static_folder = 'static'  # if you run app.py from 'root-dir-name' you don't need to specify
 
     app.layout = html.Div([
-    html.H1(f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {average_actual_rating()}", className = "banner"),
-    dcc.Tabs(id="tab-selector", value='homepage', children=[
-        dcc.Tab(label='Homepage', value='homepage'),
-        dcc.Tab(label='Match Explorer', value='match_explorer'),
-        dcc.Tab(label='Elo', value='elo-tab'),
-        dcc.Tab(label='Match Create', value='match-create'),
-    ]),
-    html.Div(id='tabs-content')
-])
+        html.Div([
+            html.H1(f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {average_actual_rating()}", className = "banner")
+        ]),
+        html.Div([
+            html.Div([], className = "stylesheet--four columns"),
+            html.Div([
+                dcc.Tabs(id="tab-selector", value='homepage', children=[
+                    dcc.Tab(label='Homepage', value='homepage'),
+                    dcc.Tab(label='Match Explorer', value='match_explorer'),
+                    dcc.Tab(label='Elo', value='elo-tab'),
+                    dcc.Tab(label='Match Create', value='match-create')
+                ])
+            ], className = "stylesheet--eight columns"),
+            html.Div([], className = "stylesheet--two columns")
+        ]),
+        html.Div(id='tabs-content')
+    ])
 
     return app
 
