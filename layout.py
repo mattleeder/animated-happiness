@@ -19,6 +19,22 @@ colours = {
     "text" : "#FFFFFF"
 }
 
+data_table_non_editable_kwargs = {
+        'style_as_list_view' : True,
+        'style_header' : {
+            'backgroundColor': 'rgba(30, 30, 30, 1)',
+            'color': 'white'
+        },
+        'style_data' : {
+            'backgroundColor': 'rgba(0, 0, 0, 0)',
+            'color': 'white'
+        },
+        'cell_selectable' : False,
+        'row_selectable' : False,
+        'column_selectable' : False,
+        'editable' : False
+}
+
 @app.callback(Output(component_id='scatter', component_property= 'figure'),
         [Input(component_id='player-name-dropdown', component_property= 'value'),
         Input(component_id='stat-name-dropdown', component_property= 'value'),
@@ -46,9 +62,9 @@ def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches
     fig = px.line(df,x = "Match Number", y = stat_name_dropdown, color = "Player")
         
     fig.update_layout(
-        plot_bgcolor = colours["background"],
-        paper_bgcolor = colours["background"],
-        font_color = colours["text"]
+        template='plotly_dark',
+        plot_bgcolor= 'rgba(0, 0, 0, 0)',
+        paper_bgcolor= 'rgba(0, 0, 0, 0)'
     )
 
     return fig
@@ -75,9 +91,9 @@ def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, 
         id = "player-stat-table", 
         columns = columns, 
         data = data,
-        editable = False,
         sort_action = "native",
-        sort_mode = "single"
+        sort_mode = "single",
+        **data_table_non_editable_kwargs
     )
 
 @app.callback(Output(component_id='match-choices', component_property= 'options'),
@@ -126,24 +142,33 @@ def display_scoreboard(chosen_match):
             columns=[{"name": i, "id": i} for i in team_one_df.columns],
             data=team_one_df.to_dict('records'),
             sort_action = "native",
-            sort_mode = "single"
+            sort_mode = "single",
+            **data_table_non_editable_kwargs
         ),
+        html.Br(),
+        html.Br(),
         html.H3(f"Team Two - Average Elo : {round(current_match.team_two_elo)}"),
         dash.dash_table.DataTable(
             id='team-two-scoreboard',
             columns=[{"name": i, "id": i} for i in team_two_df.columns],
             data=team_two_df.to_dict('records'),
             sort_action = "native",
-            sort_mode = "single"
+            sort_mode = "single",
+            **data_table_non_editable_kwargs
         ),
-        html.H6(f"https://www.faceit.com/en/csgo/room/{chosen_match}/scoreboard"),
+        html.Br(),
         dash.dash_table.DataTable(
             id = "chosen-match-faceit-link",
             columns=[{"name": i, "id": i} for i in player_elos.columns],
             data = player_elos.to_dict("records"),
             sort_action = "native",
-            sort_mode = "single"
-        )
+            sort_mode = "single",
+            **data_table_non_editable_kwargs
+        ),
+        html.Br(),
+        dcc.Markdown(f'''
+            [Faceit Room](https://www.faceit.com/en/csgo/room/{chosen_match}/scoreboard)
+        ''')
     ]
    
 
@@ -164,7 +189,8 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
     return dash.dash_table.DataTable(
         id = "table-output", 
         columns = columns, 
-        data = data
+        data = data,
+        **data_table_non_editable_kwargs
         )
 
 @app.callback(Output(component_id='elo-div', component_property= 'children'),
@@ -179,7 +205,8 @@ def elo_table(player_name_dropdown):
         columns = columns,
         data = data,
         sort_action = "native",
-        sort_mode = "single"
+        sort_mode = "single",
+        **data_table_non_editable_kwargs
         )
 
 def full_elo_table():
@@ -193,8 +220,9 @@ def full_elo_table():
         columns = columns,
         data = data,
         sort_action = "native",
-        sort_mode = "single"
-        )
+        sort_mode = "single",
+        **data_table_non_editable_kwargs
+    )
 
 @app.callback(Output(component_id='match-explorer-h3', component_property= 'children'),
             [Input(component_id='player-filter', component_property='value')])
@@ -238,8 +266,8 @@ navbar = dbc.NavbarSimple(
 		dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
 		dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
     ],
-    brand="CSGO Dashboard",
-    brand_href="#",
+    brand=f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {round(average_actual_rating(),2 )}",
+    brand_href="",
     color="primary",
     dark=True,
 )
@@ -247,89 +275,99 @@ navbar = dbc.NavbarSimple(
 
 def build_page_one():
     return [
-        dbc.Card([
+        html.Div([
             dbc.CardBody([
                 dbc.Row([
                     dbc.Col([
-                        dcc.Dropdown(
-                            id = 'player-name-dropdown',
-                            options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
-                            multi = True,
-                            value = [default_player]
-                        )
-                    ], width = 4)
-                ]),
-                dbc.Row([
+                        dbc.Card([
+                            dbc.CardBody([
+                                dcc.Dropdown(
+                                    id = 'player-name-dropdown',
+                                    options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
+                                    multi = True,
+                                    value = [default_player],
+                                    #style={'backgroundColor': 'rgba(0, 0, 0, 0)', 'color': 'black'}
+                                ),
+                                html.Br(),
+                                dcc.Dropdown(
+                                    id = "stat-name-dropdown", 
+                                    options = [{"label" : x, "value" : x} for x in sorted(Player("").stats.keys())],
+                                    multi = False,
+                                    value = "Kills"
+                                )
+                            ])
+                        ])
+                    ], width = 2),
                     dbc.Col([
-                        dcc.Dropdown(
-                            id = "stat-name-dropdown", 
-                            options = [{"label" : x, "value" : x} for x in sorted(Player("").stats.keys())],
-                            multi = False,
-                            value = "Kills"
-                        )
-                    ], width = 4)
-                ]),
-                html.Br([]),
-                dbc.Row([
-                    dbc.Col([
-                        dcc.Graph(id = 'scatter')
-                    ], width = 6)
-                ], align = "center"),
-                dbc.Row([
-                    dbc.Col([
-                        dcc.Slider(
-                            id = "n-recent-matches",
-                            min=1,
-                            max = 20,
-                            step = 1,
-                            marks={i : f"{i}" for i in range(1, 21)},
-                            value=10
-                        )
-                    ], width = 6)
+                        dbc.Card([
+                            dbc.CardBody([
+                                dcc.Graph(id = 'scatter'),
+                                dcc.Slider(
+                                    id = "n-recent-matches",
+                                    min=1,
+                                    max = 20,
+                                    step = 1,
+                                    marks={i : f"{i}" for i in range(1, 21)},
+                                    value=10
+                                )
+                            ])
+                        ])
+                    ], width = 10)
                 ], align = "center")
             ])
         ], style = {"background-color" : "dark"}),
         html.Br(),
-        dbc.Card([
-            dbc.CardBody([
-                dbc.Row([
-                    dbc.Col([
-                        html.Div(id = "stat-table", children = [
-                            dash.dash_table.DataTable(id='ordered_stat_table')
-                        ])
-                    ], width = 6),
-                    dbc.Col([
-                        html.Div(id = "elo-div", children = [
-                            dash.dash_table.DataTable(id='ordered_stat_table')
-                        ])
-                    ], width = 6)
+        html.Div([
+            dbc.Card([
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div(id = "stat-table", children = [
+                                dash.dash_table.DataTable(id='ordered_stat_table')
+                            ])
+                        ], width = 6),
+                        dbc.Col([
+                            html.Div(id = "elo-div", children = [
+                                dash.dash_table.DataTable(id='ordered_stat_table')
+                            ])
+                        ], width = 6)
+                    ], align = "center")
                 ])
-            ])
+            ], style = {"background-color" : "dark"})
         ])
     ]
 
 def build_page_two():
     return [
-        dbc.Card([
+        html.Div([
             dbc.CardBody([
                 dbc.Row([
                     dbc.Col([
                         html.Div(id = "match-explorer-main", children = [
                             html.Div(id = 'match-explorer-h3'),
-                            html.Div([
-                                dcc.Dropdown(
-                                    id = "player-filter",
-                                    options = [{"label" : "All", "value" : "All"}] + [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
-                                    multi = False,
-                                    value = "All"
-                                )
-                            ]),
-                            html.Div([
-                                dcc.Dropdown(
-                                    id = 'match-choices'
-                                )
-                            ]),
-                            html.Div(id = "scoreboard-container")
+                            dbc.Card([
+                                dbc.CardBody([
+                                    dbc.Row([
+                                        dcc.Dropdown(
+                                            id = "player-filter",
+                                            options = [{"label" : "All", "value" : "All"}] + [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
+                                            multi = False,
+                                            value = "All"
+                                        )
+                                    ]),
+                                    dbc.Row([
+                                        dcc.Dropdown(
+                                            id = 'match-choices'
+                                        )
+                                    ])
+                                ]),
+                            ], style = {"background-color" : "dark"}),
+                            html.Br([]),
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div(id = "scoreboard-container")
+                                ])
+                            ], style = {"background-color" : "dark"})
                         ])
                     ])
                 ])
@@ -339,15 +377,21 @@ def build_page_two():
 
 def build_page_three():
     return [
-        dbc.Card([
-            dbc.CardBody([
-                dbc.Row([
-                    dbc.Col([
-                        html.Div(id = 'elo-tab-main', children = [
-                            html.H3("Elo"),
-                            html.Div(id = 'elo-table-container', children = full_elo_table())
+        html.Br(),
+        html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H3("Elo")
                         ])
-                    ])
+                    ]),
+                    html.Br(),
+                    dbc.Card([
+                        dbc.CardBody([
+                    html.Div(id = 'elo-table-container', children = full_elo_table())
+                        ])
+                    ], style = {"background-color" : "dark"})
                 ])
             ])
         ])

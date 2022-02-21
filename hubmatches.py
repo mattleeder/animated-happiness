@@ -115,10 +115,10 @@ class HubMatches:
         length_diff = new_length - old_length
         
         new_match_id_list = match_id_list[:length_diff]
-        new_match_id_list.reverse() #Reversing for insert to maintain order
+        new_match_id_list.reverse() #Reversing for insert to maintain order, is this right?
         
         for match_id in new_match_id_list:
             print(match_id)
-            self.parse_match(self.api_key, match_id, player_dict, match_dict, insert = True)
+            self.parse_match(match_id, player_dict, match_dict, insert = True)
 
         return match_id_list
