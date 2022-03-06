@@ -224,6 +224,21 @@ def full_elo_table():
         **data_table_non_editable_kwargs
     )
 
+def elo_hiscores():
+
+    d = {player : max(player_dict[player].elo_history) for player in player_dict}
+    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+
+    return dash.dash_table.DataTable(
+        id = "table-output",
+        columns = columns,
+        data = data,
+        sort_action = "native",
+        sort_mode = "single",
+        **data_table_non_editable_kwargs
+    )
+
 @app.callback(Output(component_id='match-explorer-h3', component_property= 'children'),
             [Input(component_id='player-filter', component_property='value')])
 def match_explorer_h3_func(player_filter):
@@ -265,6 +280,7 @@ navbar = dbc.NavbarSimple(
 		dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
 		dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
 		dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
+		dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
     ],
     brand=f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {round(average_actual_rating(),2 )}",
     brand_href="",
@@ -417,11 +433,34 @@ def build_page_four():
         ])
     ]
 
+def build_page_five():
+    return [
+        html.Br(),
+        html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H3("Elo Hi-Scores")
+                        ])
+                    ]),
+                    html.Br(),
+                    dbc.Card([
+                        dbc.CardBody([
+                    html.Div(id = 'elo-table-container', children = elo_hiscores())
+                        ])
+                    ], style = {"background-color" : "dark"})
+                ])
+            ])
+        ])
+    ]
+
 page_dict = {
 	"/page-1" : build_page_one(),
 	"/page-2" : build_page_two(),
 	"/page-3" : build_page_three(),
 	"/page-4" : build_page_four(),
+	"/page-5" : build_page_five(),
 }
 
 @app.callback(
