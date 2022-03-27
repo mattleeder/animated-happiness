@@ -1,3 +1,4 @@
+from numpy import full
 import requests
 from match import Match
 from player import Player
@@ -75,10 +76,11 @@ class HubMatches:
             offset += 100
             limit -= 100
             full_match_list.extend(match_id_list)
+
             
         return full_match_list
 
-    def parse_match(self, match_id, player_dict, match_dict, insert = False):
+    def parse_match(self, match_id, player_dict, match_dict):
 
         """
         Updates Player objects and creates Match objects for a specific match.
@@ -86,7 +88,7 @@ class HubMatches:
         
         current_match = Match(match_id, self.api_key)
         current_match_data = current_match.match_stats()
-        Player.parse_match_data(current_match_data, player_dict, insert)
+        Player.parse_match_data(current_match_data, player_dict)
         Match.full_parse(self.api_key, match_id, current_match_data, player_dict, match_dict)
 
     def full_match_loop(self, offset, limit, player_dict, match_dict):
@@ -108,6 +110,8 @@ class HubMatches:
         Checks the hub matches and compares the IDs to matches already parsed to only get
         new match IDs, then parses through the new match IDs and adds them to the list.
         """
+
+        print("Partial Called")
         
         old_length = len(old_match_id_list)
         match_id_list = self.get_full_match_list(offset, limit)
@@ -115,10 +119,10 @@ class HubMatches:
         length_diff = new_length - old_length
         
         new_match_id_list = match_id_list[:length_diff]
-        new_match_id_list.reverse() #Reversing for insert to maintain order, is this right?
+        new_match_id_list.reverse() # Reversing to maintain order, is this right?
         
         for match_id in new_match_id_list:
             print(match_id)
-            self.parse_match(match_id, player_dict, match_dict, insert = True)
+            self.parse_match(match_id, player_dict, match_dict)
 
         return match_id_list

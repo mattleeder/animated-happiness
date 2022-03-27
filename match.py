@@ -30,8 +30,8 @@ class Match:
         self.map = data["round_stats"]["Map"].split("/")[-1]
         self.team_one_score = data["teams"][0]["team_stats"]["Final Score"]
         self.team_two_score = data["teams"][1]["team_stats"]["Final Score"]
-        self.team_one = [player["nickname"] for player in data["teams"][0]["players"]]
-        self.team_two = [player["nickname"] for player in data["teams"][1]["players"]]
+        self.team_one = [player["player_id"] for player in data["teams"][0]["players"]]
+        self.team_two = [player["player_id"] for player in data["teams"][1]["players"]]
         self.players = self.team_one + self.team_two
 
         self.winner = 1 + (int(self.team_two_score) > int(self.team_one_score))
@@ -45,7 +45,7 @@ class Match:
 
         for i in range(num_team_players):
 
-            player = data["teams"][team - 1]["players"][i]["nickname"]
+            player = data["teams"][team - 1]["players"][i]["player_id"]
             player_stats = data["teams"][team - 1]["players"][i]["player_stats"]
 
             self.player_stats[player] = player_stats

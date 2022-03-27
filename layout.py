@@ -1,6 +1,10 @@
 from player import Player
-import cmdargparse
+from hubmatches import HubMatches
 from elo import Elo
+import base64
+import io
+import datetime
+import cmdargparse
 
 import pandas as pd
 
@@ -9,11 +13,17 @@ from dash import html
 from dash import dcc
 import plotly.graph_objects as go
 import plotly.express as px
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import matchlistpickle
+import pickle
+
+offset = 0
+actual_limit = 10_000
+
+api_key = cmdargparse.args.api_key
 
 app = dash.Dash(__name__, title = "CSGO Dashboard", update_title="Loading...")
-player_dict, match_list, match_dict, default_player = cmdargparse.main()
 colours = {
     "background" : "#272b30",
     "text" : "#FFFFFF"
@@ -35,6 +45,23 @@ data_table_non_editable_kwargs = {
         'editable' : False
 }
 
+DATA = None
+
+player_dict = {}
+match_dict = {}
+match_list = {}
+player_name_lookup = {}
+default_player = None
+
+def player_dropdown_func(player_name_lookup, all = False, **kwargs):
+    options = [{"label" : x, "value" : player_name_lookup[x]} for x in sorted(player_name_lookup.keys())]
+    if all:
+        options.insert(0, {"label" : "All", "value" : "All"})
+    return dcc.Dropdown(
+        options = options,
+        **kwargs
+    )
+    
 @app.callback(Output(component_id='scatter', component_property= 'figure'),
         [Input(component_id='player-name-dropdown', component_property= 'value'),
         Input(component_id='stat-name-dropdown', component_property= 'value'),
@@ -51,7 +78,7 @@ def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches
     for player in player_name_dropdown:
 
         matches = min(n, len(player_dict[player].stats["Match ID"]))
-        data["Player"].extend([player] * matches)
+        data["Player"].extend([player_dict[player].name] * matches)
         data["Match Number"].extend(list(range(n - matches, n)))
 
         stat_list = player_dict[player].stats[stat_name_dropdown][-n:]
@@ -84,7 +111,7 @@ def average_actual_rating():
 def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, denominator_stat = None):
     
     d = Player.order_players_by_stat(player_dict, player_name_dropdown, n_recent_matches, stat_name_dropdown, denominator_stat)
-    data = [{stat_name_dropdown : round(key,2), "Player" : d[key]} for key in sorted(d.keys(), reverse = True)]
+    data = [{stat_name_dropdown : round(key,2), "Player" : player_dict[d[key]].name} for key in sorted(d.keys(), reverse = True)]
     columns = [{"name" : stat_name_dropdown, "id" : stat_name_dropdown}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
@@ -126,8 +153,11 @@ def display_scoreboard(chosen_match):
     team_one_data, team_two_data = current_match.scoreboard_data()
     player_elos = pd.DataFrame.from_dict(current_match.player_elo_data).T.reset_index()
     player_elos = player_elos.round({'Elo': 0, 'Elo Change': 1, "Performance Target" : 2, "Performance Actual" : 2})
+    player_elos["index"] = player_elos["index"].map({player_id : player.name for player_id, player in player_dict.items()})
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
     team_two_df = pd.DataFrame(team_two_data).T.reset_index()
+    team_one_df["index"] = team_one_df["index"].map({player_id : player.name for player_id, player in player_dict.items()})
+    team_two_df["index"] = team_two_df["index"].map({player_id : player.name for player_id, player in player_dict.items()})
     team_one_df.rename(columns = {"index" : "Player"}, inplace = True)
     team_two_df.rename(columns = {"index" : "Player"}, inplace = True)
     player_elos.rename(columns = {"index" : "Player"}, inplace = True)
@@ -197,7 +227,7 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
             [Input(component_id='player-name-dropdown', component_property= 'value')])
 def elo_table(player_name_dropdown):
     d = {player : player_dict[player].elo for player in player_name_dropdown}
-    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    data = [{"Player" : player_dict[key].name, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
     columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
@@ -212,7 +242,7 @@ def elo_table(player_name_dropdown):
 def full_elo_table():
 
     d = {player : player_dict[player].elo for player in player_dict}
-    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    data = [{"Player" : player_dict[key].name, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
     columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
@@ -227,7 +257,7 @@ def full_elo_table():
 def elo_hiscores():
 
     d = {player : max(player_dict[player].elo_history) for player in player_dict}
-    data = [{"Player" : key, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+    data = [{"Player" : player_dict[key].name, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
     columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
@@ -273,20 +303,135 @@ def match_create(players):
         data = data
     )    
 
-
-navbar = dbc.NavbarSimple(
-    children=[
-        dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact')),
-		dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
-		dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
-		dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
-		dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
-    ],
-    brand=f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {round(average_actual_rating(),2 )}",
-    brand_href="",
-    color="primary",
-    dark=True,
+@app.callback(
+    Output("download-output", "data"),
+    Input("download-button", "n_clicks"),
+    prevent_initial_call=True,
 )
+def download_func(n_clicks):
+    data = [player_dict, match_dict, match_list]
+    matchlistpickle.pickle_write("dashboard_data", data)
+    return dcc.send_file(
+        "./dashboard_data"
+    )
+
+@app.callback(
+    Output("fetch-output", "children"),
+    Input("hub-id", "value"),
+    Input("fetch-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fetch_func(hub_id, n_clicks):
+    print("Fetching")
+
+    ctx = dash.callback_context
+
+    if ctx.triggered[0]["prop_id"] != "fetch-button.n_clicks":
+        print("Fetch Cancelled")
+        raise dash.exceptions.PreventUpdate
+
+    print("Continuing Fetch")
+
+    global player_dict
+    global match_dict
+    global match_list
+    global player_name_lookup
+    global default_player
+
+    hub = HubMatches(hub_id, api_key)
+    player_dict = {}
+    match_dict = {}
+    match_list = hub.full_match_loop(offset, actual_limit, player_dict, match_dict)
+    player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
+    default_player = list(player_dict.keys())[0]
+    return "Fetching"
+
+@app.callback(
+    Output("update-output", "children"),
+    Input("hub-id", "value"),
+    Input("update-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def update_func(hub_id, n_clicks):
+    print("Updating!")
+    print(f"{hub_id}")
+
+    ctx = dash.callback_context
+
+    if ctx.triggered[0]["prop_id"] != "update-button.n_clicks":
+        raise dash.exceptions.PreventUpdate
+
+    print("Not halted")
+
+    global player_dict
+    global match_dict
+    global match_list
+    global player_name_lookup
+    global default_player
+
+    print("Past Global")
+    hub = HubMatches(hub_id, api_key)
+    old_match_list = match_list.copy()
+    match_list = hub.partial_match_loop(offset, actual_limit, player_dict, match_dict, old_match_list)
+    player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
+    default_player = list(player_dict.keys())[0]
+    print("Update finished")
+    
+    return f"Found {len(match_list) - len(old_match_list)} new matches"
+
+
+@app.callback(
+    Output("upload-func-output", "children"),
+    Input("data-upload-button", "n_clicks"),
+    Input("data-upload", "contents"),
+    prevent_initial_call=True,
+)
+def upload_func(n_clicks, data):
+    print("Uploading")
+
+    global DATA
+    global player_dict
+    global match_dict
+    global match_list
+    global player_name_lookup
+    global default_player
+
+    content_type, content_string = data.split(',')
+    decoded = base64.b64decode(content_string)
+    # df = pd.read_pickle(io.BytesIO(decoded))
+
+    DATA = pickle.load(io.BytesIO(decoded))
+
+    player_dict = DATA[0]
+    match_dict = DATA[1]
+    match_list = DATA[2]
+    player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
+    default_player = sorted(list(player_dict.keys()))[0]
+
+    print("Uploading end")
+
+def brand_func():
+    try:
+        msg = f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {round(average_actual_rating(),2 )}"
+    except ZeroDivisionError:
+        msg = f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: None"
+    return msg
+
+def navbar_func():
+    return dbc.NavbarSimple(
+        children=[
+            dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact')),
+        ],
+        brand=brand_func(),
+        brand_href="",
+        color="primary",
+        dark=True,
+    )
 
 
 def build_page_one():
@@ -297,13 +442,7 @@ def build_page_one():
                     dbc.Col([
                         dbc.Card([
                             dbc.CardBody([
-                                dcc.Dropdown(
-                                    id = 'player-name-dropdown',
-                                    options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
-                                    multi = True,
-                                    value = [default_player],
-                                    #style={'backgroundColor': 'rgba(0, 0, 0, 0)', 'color': 'black'}
-                                ),
+                                player_dropdown_func(player_name_lookup, id = "player-name-dropdown", multi = True),
                                 html.Br(),
                                 dcc.Dropdown(
                                     id = "stat-name-dropdown", 
@@ -364,12 +503,7 @@ def build_page_two():
                             dbc.Card([
                                 dbc.CardBody([
                                     dbc.Row([
-                                        dcc.Dropdown(
-                                            id = "player-filter",
-                                            options = [{"label" : "All", "value" : "All"}] + [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
-                                            multi = False,
-                                            value = "All"
-                                        )
+                                        player_dropdown_func(player_name_lookup, id = 'player-filter', all = True, multi = False, value = "All"),
                                     ]),
                                     dbc.Row([
                                         dcc.Dropdown(
@@ -421,10 +555,8 @@ def build_page_four():
                     dbc.Col([
                         html.Div(id = 'match-create-main', children = [
                             html.Div([
-                                dcc.Dropdown(id = "elo-filter",
-                                options = [{"label" : x, "value" : x} for x in sorted(player_dict.keys())],
-                                multi = True)
-                                ]),
+                                player_dropdown_func(player_name_lookup, id = 'elo-filter', all = False, multi = True),
+                            ]),
                             html.Div(id = 'match-create')
                         ])
                     ])
@@ -455,30 +587,63 @@ def build_page_five():
         ])
     ]
 
-page_dict = {
-	"/page-1" : build_page_one(),
-	"/page-2" : build_page_two(),
-	"/page-3" : build_page_three(),
-	"/page-4" : build_page_four(),
-	"/page-5" : build_page_five(),
-}
+
+def build_page_six():
+    return [
+        html.Div([
+            dcc.Input(id="hub-id", type="text", placeholder="", debounce=True),
+        ]),
+        html.Div([
+            html.Button("Download Dashboard Data", id="download-button"),
+            dcc.Download(id="download-output")
+        ]),
+        html.Div([
+            html.Button("Fetch Dashboard Data", id="fetch-button"),
+            html.Div(id="fetch-output")
+        ]),
+        html.Div([
+            html.Button("Update Dashboard Data", id="update-button"),
+            html.Div(id="update-output")
+        ]),
+        html.Div([
+            dcc.Upload(id = "data-upload", children = [
+                html.Button("Data Upload", id = "data-upload-button")
+            ]),
+            html.Button("Upload Func", id="upload-func-button"),
+            html.Div(id="upload-func-output")
+        ]),
+    ]    
 
 @app.callback(
 	Output("page-content", "children"),
 	Input("url", "pathname")
 )
 def render_page_content(pathname):
-	return page_dict[pathname]
+    page_dict = {
+        "/page-1" : build_page_one(),
+        "/page-2" : build_page_two(),
+        "/page-3" : build_page_three(),
+        "/page-4" : build_page_four(),
+        "/page-5" : build_page_five(),
+        "/page-6" : build_page_six(),
+    }
+    return page_dict.get(pathname, None)
+    
+# content = html.Div(id="page-content", children = [], style = {"background-color" : colours["background"]})
 
-content = html.Div(id="page-content", children = [], style = {"background-color" : colours["background"]})
+def content_func():
+    return html.Div(id="page-content", children = [], style = {"background-color" : colours["background"]})
+
+def serve_layout():
+    return html.Div([
+        dcc.Location(id='url'),
+        navbar_func(),
+        content_func()
+    ])
 
 def main():
 
-    app.layout = html.Div([
-        dcc.Location(id='url'),
-        navbar,
-        content
-    ])
+    app.layout = serve_layout
 
     app.config.suppress_callback_exceptions = True
 
@@ -486,3 +651,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

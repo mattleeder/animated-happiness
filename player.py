@@ -7,9 +7,11 @@ class Player:
 
     # self.player_dict = player_dict
     
-    def __init__(self, name):
+    def __init__(self, player_id):
         
-        self.name = name
+        self.name = None
+        self.player_id = player_id
+        self.name_history = []
         self.stats = {"Match ID" : [],
                       "Number of Rounds" : [],
                       "Map" : [],
@@ -28,25 +30,14 @@ class Player:
         self.elo = 1000
         self.elo_history = []
 
-    def stat_parse(self, match_id, total_rounds, match_map, statistics, insert = False):
-        
-        if insert == False:
+    def stat_parse(self, match_id, total_rounds, match_map, statistics):
             
-            self.stats["Match ID"].append(match_id)
-            self.stats["Number of Rounds"].append(int(total_rounds))
-            self.stats["Map"].append(match_map)
+        self.stats["Match ID"].append(match_id)
+        self.stats["Number of Rounds"].append(int(total_rounds))
+        self.stats["Map"].append(match_map)
 
-            for statistic in statistics:
-                self.stats[statistic].append(float(statistics[statistic]))
-        
-        elif insert == True:
-            
-            self.stats["Match ID"].insert(0, match_id)
-            self.stats["Number of Rounds"].insert(0, int(total_rounds))
-            self.stats["Map"].insert(0, match_map)
-
-            for statistic in statistics:
-                self.stats[statistic].insert(0, float(statistics[statistic]))
+        for statistic in statistics:
+            self.stats[statistic].append(float(statistics[statistic]))
             
     def avg_last_n_matches(self, n, stat, per_round = False):
         
@@ -118,7 +109,7 @@ class Player:
         pass
 
     @classmethod
-    def parse_match_data(match_id, match_data, player_dict, insert = False):
+    def parse_match_data(match_id, match_data, player_dict):
         """
         Retrieves player stats from match data and adds them to player_dict.
 
@@ -150,9 +141,10 @@ class Player:
         
         for team in match_data["teams"]:
             for player in team["players"]:
-                    if player["nickname"] not in player_dict.keys():
-                        player_dict[player["nickname"]] = Player(player["nickname"])
-                    player_dict[player["nickname"]].stat_parse(match_id, total_rounds, match_map, player["player_stats"], insert)
+                    if player["player_id"] not in player_dict.keys():
+                        player_dict[player["player_id"]] = Player(player["player_id"])
+                    player_dict[player["player_id"]].name = player["nickname"]
+                    player_dict[player["player_id"]].stat_parse(match_id, total_rounds, match_map, player["player_stats"])
 
         return None
 
