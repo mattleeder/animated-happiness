@@ -24,6 +24,8 @@ actual_limit = 10_000
 api_key = cmdargparse.api_key
 
 app = dash.Dash(__name__, title = "CSGO Dashboard", update_title="Loading...")
+server = app.server
+
 colours = {
     "background" : "#272b30",
     "text" : "#FFFFFF"
@@ -650,5 +652,8 @@ def main():
     return app
 
 if __name__ == "__main__":
-    main()
+
+    app.layout = serve_layout
+    app.config.suppress_callback_exceptions = True
+    app.run_server()
     
