@@ -21,7 +21,7 @@ import pickle
 offset = 0
 actual_limit = 10_000
 
-api_key = cmdargparse.args.api_key
+api_key = cmdargparse.api_key
 
 app = dash.Dash(__name__, title = "CSGO Dashboard", update_title="Loading...")
 colours = {
