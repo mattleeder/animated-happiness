@@ -422,12 +422,12 @@ def brand_func():
 def navbar_func():
     return dbc.NavbarSimple(
         children=[
-            dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact')),
-            dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
-            dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
-            dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
-            dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
-            dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact')),
+            dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact', external_link=True)),
+            dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact', external_link=True)),
+            dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact', external_link=True)),
+            dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact', external_link=True)),
+            dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact', external_link=True)),
+            dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact', external_link=True)),
         ],
         brand=brand_func(),
         brand_href="",
@@ -654,7 +654,6 @@ app.layout = serve_layout
 #     return app
 
 if __name__ == "__main__":
-
 
     app.config.suppress_callback_exceptions = True
     app.run_server()
