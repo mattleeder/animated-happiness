@@ -643,13 +643,13 @@ def serve_layout():
         content_func()
     ])
 
-def main():
+# def main():
 
-    app.layout = serve_layout
+#     app.layout = serve_layout
 
-    app.config.suppress_callback_exceptions = True
+#     app.config.suppress_callback_exceptions = True
 
-    return app
+#     return app
 
 if __name__ == "__main__":
 
