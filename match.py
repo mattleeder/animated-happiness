@@ -106,6 +106,7 @@ class Match:
         
         url = f"https://open.faceit.com/data/v4/matches/{self.match_id}/stats"
         response = requests.get(url, headers = {"Authorization" : "Bearer " + self.api_key})
+        response.close()
         
         # Why is this here? To catch KeyError when response does not contain "rounds"
 
