@@ -643,6 +643,8 @@ def serve_layout():
         content_func()
     ])
 
+app.layout = serve_layout
+
 # def main():
 
 #     app.layout = serve_layout
@@ -653,7 +655,7 @@ def serve_layout():
 
 if __name__ == "__main__":
 
-    app.layout = serve_layout
+
     app.config.suppress_callback_exceptions = True
     app.run_server()
     
