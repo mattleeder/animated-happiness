@@ -5,3 +5,5 @@ matches*
 stats*
 __pycache__
 .vs
+.env
+Procfile.windows
