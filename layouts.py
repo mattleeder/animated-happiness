@@ -171,7 +171,3 @@ data_retrieve_page = html.Div([
     ]),
     html.Div(id = "data-retrieve-msg")
 ])
-
-internal_data_page = html.Div([
-    html.Div(id="internal-data-list"),
-])
