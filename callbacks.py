@@ -59,6 +59,10 @@ def render_navbar(match_dict, match_list):
         except ZeroDivisionError:
             avg_rating = "Null"
 
+    else:
+        avg_rating = "Null"
+        match_list = []
+
     return [
         dbc.NavbarSimple(
             children=[
