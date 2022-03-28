@@ -54,10 +54,10 @@ def render_navbar(match_dict, match_list):
         match_dict = jsonpickle.decode(json.loads(match_dict))
         match_list = jsonpickle.decode(json.loads(match_list))
 
-    try:
-        avg_rating = round(average_actual_rating(match_dict), 2)
-    except ZeroDivisionError:
-        avg_rating = "Null"
+        try:
+            avg_rating = round(average_actual_rating(match_dict), 2)
+        except ZeroDivisionError:
+            avg_rating = "Null"
 
     return [
         dbc.NavbarSimple(
