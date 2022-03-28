@@ -12,20 +12,29 @@ import io
 import os
 from hubmatches import HubMatches
 from player import Player
+import logging
 import jsonpickle
 import json
+import sys
 
+logging.basicConfig(level=logging.DEBUG)
 
 api_key = os.environ["API_KEY"]
 offset = 0
 actual_limit = 10_000
 
-GLOBAL_DATA_DICTIONARY = {
-    "player_dict" : {},
-    "match_dict" : {},
-    "match_list" : [],
-    "player_name_lookup" : {}
-}
+def create_data_dictionary():
+    logging.info("create_data_dictionary called")
+    if "GLOBAL_DATA_DICTIONARY" in globals():
+        return GLOBAL_DATA_DICTIONARY
+    return {
+        "player_dict" : {},
+        "match_dict" : {},
+        "match_list" : [],
+        "player_name_lookup" : {}
+    }
+
+GLOBAL_DATA_DICTIONARY = create_data_dictionary()
 
 data_table_non_editable_kwargs = {
         'style_as_list_view' : True,
@@ -80,6 +89,7 @@ def render_navbar(match_dict, match_list):
                 dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
                 dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
                 dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact')),
+                dbc.NavItem(dbc.NavLink("Page 7", href="/page-7", active='exact')),
             ],
             brand=f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {avg_rating}",
             brand_href="",
@@ -469,7 +479,7 @@ def update_func(hub_id, player_dict, match_dict, match_list):
 
 
 def upload_func(data):
-    print("Uploading")
+    logging.debug("upload_func called")
 
     content_type, content_string = data.split(',')
     decoded = base64.b64decode(content_string)
@@ -523,3 +533,30 @@ def data_master_function(fetch_clicks, update_clicks, upload_clicks, hub_id, pla
         raise dash.exceptions.PreventUpdate
 
     return (msg, 1, 2, 3, 4)
+
+@callback(
+    Output("internal-data-list", "children"),
+    Input("player-dict", "data"),
+    Input("match-dict", "data"),
+    Input("match-list", "data"),
+    Input("player-name-lookup", "data")
+)
+def internal_data(player_dict, match_dict, match_list, player_name_lookup):
+
+    player_dict = GLOBAL_DATA_DICTIONARY["player_dict"]
+    match_dict = GLOBAL_DATA_DICTIONARY["match_dict"]
+    match_list = GLOBAL_DATA_DICTIONARY["match_list"]
+    player_name_lookup = GLOBAL_DATA_DICTIONARY["player_name_lookup"]
+
+    return [
+        html.Div([
+            html.H3("Player Dict"),
+            html.Div(html.H4(str(player_dict)[:1000])),
+            html.H3("Match Dict"),
+            html.Div(html.H4(str(match_dict)[:1000])),
+            html.H3("Match List"),
+            html.Div(html.H4(str(match_list)[:1000])),
+            html.H3("Player name lookup"),
+            html.Div(html.H4(str(player_name_lookup)[:1000]))
+        ])
+    ]

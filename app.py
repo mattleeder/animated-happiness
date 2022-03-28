@@ -1,6 +1,6 @@
 from dash import Dash, dcc, html, Input, Output, callback
 
-from layouts import stat_page, match_page, elo_page, match_balance_page, elo_high_score_page, data_retrieve_page
+from layouts import stat_page, match_page, elo_page, match_balance_page, elo_high_score_page, data_retrieve_page, internal_data_page
 import callbacks
 
 
@@ -51,6 +51,7 @@ def render_page_content(pathname):
         "/page-4" : match_balance_page,
         "/page-5" : elo_high_score_page,
         "/page-6" : data_retrieve_page,
+        "/page-7" : internal_data_page,
     }
     return page_dict.get(pathname, None)
 
