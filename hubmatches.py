@@ -1,8 +1,6 @@
-from numpy import full
 import requests
 from match import Match
 from player import Player
-import sys
 
 import logging
 

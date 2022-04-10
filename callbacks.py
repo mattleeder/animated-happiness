@@ -2,7 +2,6 @@ from dash import Input, Output, State, callback, dash_table, dcc, html
 import dash_bootstrap_components as dbc
 import dash
 import base64
-from itsdangerous import base64_decode
 import pandas as pd
 import plotly.express as px
 import matchlistpickle
