@@ -2,6 +2,9 @@ from numpy import full
 import requests
 from match import Match
 from player import Player
+import sys
+
+import logging
 
 class HubMatches:
 
@@ -100,7 +103,7 @@ class HubMatches:
         match_id_list = self.get_full_match_list(offset, limit)
         
         for match_id in match_id_list[::-1]: # Which way?
-            print(match_id)
+            logging.debug(match_id)
             self.parse_match(match_id, player_dict, match_dict)
 
         return match_id_list
@@ -112,7 +115,7 @@ class HubMatches:
         new match IDs, then parses through the new match IDs and adds them to the list.
         """
 
-        print("Partial Called")
+        logging.debug("Partial Called")
         
         old_length = len(old_match_id_list)
         match_id_list = self.get_full_match_list(offset, limit)
@@ -123,7 +126,7 @@ class HubMatches:
         new_match_id_list.reverse() # Reversing to maintain order, is this right?
         
         for match_id in new_match_id_list:
-            print(match_id)
+            logging.debug(match_id)
             self.parse_match(match_id, player_dict, match_dict)
 
         return match_id_list

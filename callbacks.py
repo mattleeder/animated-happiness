@@ -14,8 +14,26 @@ from hubmatches import HubMatches
 from player import Player
 import jsonpickle
 import json
+from dotenv import load_dotenv
 
+from rq import Queue, get_current_job
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+from worker import conn
+import uuid
+from collections import namedtuple
 
+import logging
+
+logging.basicConfig(level = logging.DEBUG)
+
+q = Queue(connection=conn)
+
+Result = namedtuple(
+    "Result", ["msg", "player_dict", "match_dict", "match_list", "player_name_lookup", "progress", "collapse_is_open", "finished_data"]
+)
+
+load_dotenv()
 api_key = os.environ["API_KEY"]
 offset = 0
 actual_limit = 10_000
@@ -390,12 +408,7 @@ def download_func(n_clicks, player_dict, match_dict, match_list):
 
 def fetch_func(hub_id):
 
-    ctx = dash.callback_context
-    if ctx.triggered[0]["prop_id"] != "fetch-button.n_clicks":
-        print("Fetch Cancelled")
-        raise dash.exceptions.PreventUpdate
-
-    print("Fetching")
+    logging.debug("Fetching")
 
     hub = HubMatches(hub_id, api_key)
     player_dict = {}
@@ -412,13 +425,11 @@ def fetch_func(hub_id):
         json.dumps(jsonpickle.encode(player_name_lookup))
     )
 
-def update_func(hub_id, player_dict, match_dict, match_list):
+def update_func(ctx, hub_id, player_dict, match_dict, match_list):
 
-    ctx = dash.callback_context
-    if ctx.triggered[0]["prop_id"] != "update-button.n_clicks":
-        raise dash.exceptions.PreventUpdate
+
     
-    print("Updating!")
+    logging.debug("Updating!")
     print(f"{hub_id}")
 
     player_dict = jsonpickle.decode(json.loads(player_dict))
@@ -466,12 +477,44 @@ def upload_func(data):
         json.dumps(jsonpickle.encode(player_name_lookup))
     )
 
+# @callback(
+#     Output("data-retrieve-msg", "children"),
+#     Output("player-dict", "data"),
+#     Output("match-dict", "data"),
+#     Output("match-list", "data"),
+#     Output("player-name-lookup", "data"),
+#     Input("fetch-button", "n_clicks"),
+#     Input("update-button", "n_clicks"),
+#     Input("data-upload-button", "n_clicks"),
+#     Input("hub-id", "value"),
+#     Input("player-dict", "data"),
+#     Input("match-dict", "data"),
+#     Input("match-list", "data"),
+#     Input("data-upload", "contents"),
+#     prevent_initial_call=True,
+# )
+# def data_master_function(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, match_dict, match_list, uploaded_data):
+#     ctx = dash.callback_context
+#     if ctx.triggered[0]["value"] is None:
+#         raise dash.exceptions.PreventUpdate
+#     elif ctx.triggered[0]["prop_id"] == "fetch-button.n_clicks":
+#         msg, player_dict, match_dict, match_list, player_name_lookup = fetch_func(hub_id)
+#     elif ctx.triggered[0]["prop_id"] == "update-button.n_clicks":
+#         msg, player_dict, match_dict, match_list, player_name_lookup = update_func(hub_id, player_dict, match_dict, match_list)
+#     elif ctx.triggered[0]["prop_id"] == "data-upload.contents":
+#         print("Master upload")
+#         msg, player_dict, match_dict, match_list, player_name_lookup = upload_func(uploaded_data)
+#     else:
+#         raise dash.exceptions.PreventUpdate
+#     return msg, player_dict, match_dict, match_list, player_name_lookup
+
+# @callback(
+#     Output("submitted-store", "data"),
+#     [Input("button", "n_clicks")],
+#     [State("text", "value")],
+# )
 @callback(
-    Output("data-retrieve-msg", "children"),
-    Output("player-dict", "data"),
-    Output("match-dict", "data"),
-    Output("match-list", "data"),
-    Output("player-name-lookup", "data"),
+    Output("submitted-store", "data"),
     Input("fetch-button", "n_clicks"),
     Input("update-button", "n_clicks"),
     Input("data-upload-button", "n_clicks"),
@@ -482,17 +525,116 @@ def upload_func(data):
     Input("data-upload", "contents"),
     prevent_initial_call=True,
 )
-def data_master_function(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, match_dict, match_list, uploaded_data):
+def submit(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, match_dict, match_list, uploaded_data):
+    """
+    Submit a job to the queue, log the id in submitted-store
+    """
+    print("Submit called")
     ctx = dash.callback_context
+
+    id_ = str(uuid.uuid4())
+
+    # queue the task
     if ctx.triggered[0]["value"] is None:
         raise dash.exceptions.PreventUpdate
     elif ctx.triggered[0]["prop_id"] == "fetch-button.n_clicks":
-        msg, player_dict, match_dict, match_list, player_name_lookup = fetch_func(hub_id)
+        if ctx.triggered[0]["prop_id"] != "fetch-button.n_clicks":
+            logging.debug("Fetch Cancelled")
+            raise dash.exceptions.PreventUpdate
+        q.enqueue(fetch_func, hub_id, job_id = id_, job_timeout = 600)
     elif ctx.triggered[0]["prop_id"] == "update-button.n_clicks":
-        msg, player_dict, match_dict, match_list, player_name_lookup = update_func(hub_id, player_dict, match_dict, match_list)
+        if ctx.triggered[0]["prop_id"] != "update-button.n_clicks":
+            raise dash.exceptions.PreventUpdate
+        q.enqueue(update_func, hub_id, player_dict, match_dict, match_list, job_id = id_)
     elif ctx.triggered[0]["prop_id"] == "data-upload.contents":
         print("Master upload")
-        msg, player_dict, match_dict, match_list, player_name_lookup = upload_func(uploaded_data)
+        q.enqueue(upload_func, uploaded_data, job_id = id_)
     else:
+        return {}
         raise dash.exceptions.PreventUpdate
-    return msg, player_dict, match_dict, match_list, player_name_lookup
+
+    # log process id in dcc.Store
+    return {"id": id_}
+
+"msg", "player_dict", "match_dict", "match_list", "player_name_lookup"
+@callback(
+    Output("data-retrieve-msg", "children"),
+    Output("player-dict", "data"),
+    Output("match-dict", "data"),
+    Output("match-list", "data"),
+    Output("player-name-lookup", "data"),
+    # Output("progress", "value"),
+    # Output("collapse", "is_open"),
+    Output("finished-store", "data"),
+    Input("interval", "n_intervals"),
+    State("submitted-store", "data"),
+)
+def retrieve_output(n, submitted):
+    """
+    Periodically check the most recently submitted job to see if it has
+    completed.
+    """
+    if n and submitted:
+        try:
+            job = Job.fetch(submitted["id"], connection=conn)
+            if job.get_status() == "finished":
+                # job is finished, return result, and store id
+                msg = job.result[0]
+                player_dict = job.result[1]
+                match_dict = job.result[2]
+                match_list = job.result[3]
+                player_name_lookup = job.result[4]
+                return (
+                    msg,
+                    player_dict,
+                    match_dict,
+                    match_list,
+                    player_name_lookup,
+                    {"id": submitted["id"]},
+                )
+
+            # job is still running, get progress and update progress bar
+            print(submitted)
+            return (
+                "In progress",
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                )
+        except NoSuchJobError:
+            # something went wrong, display a simple error message
+            return (
+                "Error: result not found...",
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+            )
+    # nothing submitted yet, return nothing.
+    return (
+        "Nothing submitted",
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        {},
+    )
+
+
+@callback(
+    Output("interval", "disabled"),
+    [Input("submitted-store", "data"), Input("finished-store", "data")],
+)
+def disable_interval(submitted, finished):
+    print(finished)
+    if submitted:
+        if finished and submitted["id"] == finished["id"]:
+            # most recently submitted job has finished, no need for interval
+            return True
+        # most recent job has not yet finished, keep interval going
+        return False
+    # no jobs submitted yet, disable interval
+    return True
