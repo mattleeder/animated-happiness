@@ -592,8 +592,6 @@ def submit(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, matc
     Output("match-dict", "data"),
     Output("match-list", "data"),
     Output("player-name-lookup", "data"),
-    # Output("progress", "value"),
-    # Output("collapse", "is_open"),
     Output("finished-store", "data"),
     Input("interval", "n_intervals"),
     State("submitted-store", "data"),
@@ -603,23 +601,31 @@ def retrieve_output(n, submitted):
     Periodically check the most recently submitted job to see if it has
     completed.
     """
-    if n and submitted:
+    if n and (submitted is not None):
         try:
             job = Job.fetch(submitted["id"], connection=conn)
             logging.debug(f"Job status: {job.get_status()}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
                 logging.debug("Attempting to retrieve job results")
-                msg = job.result[0]
-                logging.debug("Retrieved msg")
-                player_dict = job.result[1]
-                logging.debug("Retrieved player_dict")
-                match_dict = job.result[2]
-                logging.debug("Retrieved match_dict")
-                match_list = job.result[3]
-                logging.debug("Retrieved match_list")
-                player_name_lookup = job.result[4]
+                # msg = job.result[0]
+                # logging.debug(f"Retrieved msg: {msg}")
+                # player_dict = job.result[1]
+                # logging.debug("Retrieved player_dict")
+                # match_dict = job.result[2]
+                # logging.debug("Retrieved match_dict")
+                # match_list = job.result[3]
+                # logging.debug("Retrieved match_list")
+                # player_name_lookup = job.result[4]
                 logging.debug("Attempting to return results")
+                return (
+                    job.result[0],
+                    job.result[1],
+                    job.result[2],
+                    job.result[3],
+                    job.result[4],
+                    {"id": submitted["id"]}
+                )
                 return (
                     msg,
                     player_dict,
