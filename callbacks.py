@@ -614,7 +614,6 @@ def retrieve_output(n, submitted):
                 match_list = job.result[3]
                 player_name_lookup = job.result[4]
                 logging.debug(f"Message: {msg}")
-                logging.debug(f"Player_dict: {player_dict}")
                 return (
                     msg,
                     player_dict,

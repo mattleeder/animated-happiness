@@ -18,8 +18,8 @@ app.layout = html.Div([
     dcc.Store(id = "match-dict", storage_type='session'),
     dcc.Store(id = "match-list", storage_type='session'),
     dcc.Store(id = "player-name-lookup", storage_type='session'),
-    dcc.Store(id = "submitted-store", data = {}),
-    dcc.Store(id = "finished-store", data = {}),
+    dcc.Store(id = "submitted-store"),
+    dcc.Store(id = "finished-store"),
     dcc.Interval(id="interval", interval=500),
     dcc.Location(id='url'),
     html.Div(id = "navbar"),
@@ -42,4 +42,4 @@ def render_page_content(pathname):
     return page_dict.get(pathname, None)
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
