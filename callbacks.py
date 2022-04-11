@@ -42,6 +42,7 @@ data_table_non_editable_kwargs = {
         'backgroundColor': 'rgba(0, 0, 0, 0)',
         'color': 'white'
     },
+    "css" : [{"selector": "tr:hover", "rule": 'background-color: grey;'}],
     'cell_selectable' : False,
     'row_selectable' : False,
     'column_selectable' : False,
@@ -127,12 +128,16 @@ def full_elo_table(player_dict):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     d = {player : player_dict[player].elo for player in player_dict}
     data = [{"Player" : player_dict[key].name, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
-    columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+    df = pd.DataFrame(data)
+    df["Rank"] = df["Elo"].rank(ascending = False, method = "first")
+    df = df.sort_values(by = "Rank", ascending = True)
+    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+
 
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
-        data = data,
+        data = df.to_dict("records"),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs
@@ -146,12 +151,15 @@ def elo_hiscores(player_dict):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     d = {player : max(player_dict[player].elo_history) for player in player_dict}
     data = [{"Player" : player_dict[key].name, "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
-    columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+    df = pd.DataFrame(data)
+    df["Rank"] = df["Elo"].rank(ascending = False, method = "first")
+    df = df.sort_values(by = "Rank", ascending = True)
+    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
-        data = data,
+        data = df.to_dict("records"),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs
@@ -445,7 +453,7 @@ def fetch_func(hub_id):
         json.dumps(jsonpickle.encode(player_name_lookup))
     )
 
-def update_func(ctx, hub_id, player_dict, match_dict, match_list):
+def update_func(hub_id, player_dict, match_dict, match_list):
 
 
     

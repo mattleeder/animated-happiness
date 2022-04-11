@@ -167,7 +167,6 @@ data_retrieve_page = html.Div([
         dcc.Upload(id = "data-upload", children = [
             html.Button("Data Upload", id = "data-upload-button")
         ]),
-        html.Button("Upload Func", id="upload-func-button"),
     ]),
     html.Div(id = "data-retrieve-msg")
 ])
