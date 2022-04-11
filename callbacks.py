@@ -20,7 +20,6 @@ from rq.job import Job
 from rq.exceptions import NoSuchJobError
 from worker import conn
 import uuid
-from collections import namedtuple
 
 import logging
 
@@ -34,19 +33,19 @@ offset = 0
 actual_limit = 10_000
 
 data_table_non_editable_kwargs = {
-        'style_as_list_view' : True,
-        'style_header' : {
-            'backgroundColor': 'rgba(30, 30, 30, 1)',
-            'color': 'white'
-        },
-        'style_data' : {
-            'backgroundColor': 'rgba(0, 0, 0, 0)',
-            'color': 'white'
-        },
-        'cell_selectable' : False,
-        'row_selectable' : False,
-        'column_selectable' : False,
-        'editable' : False
+    'style_as_list_view' : True,
+    'style_header' : {
+        'backgroundColor': 'rgba(30, 30, 30, 1)',
+        'color': 'white'
+    },
+    'style_data' : {
+        'backgroundColor': 'rgba(0, 0, 0, 0)',
+        'color': 'white'
+    },
+    'cell_selectable' : False,
+    'row_selectable' : False,
+    'column_selectable' : False,
+    'editable' : False
 }
 
 def average_actual_rating(match_dict):
@@ -93,28 +92,36 @@ def render_navbar(match_dict, match_list):
         )
     ]
 
-@callback(Output(component_id='player-name-dropdown', component_property= 'options'),
-            Input(component_id='player-name-lookup', component_property='data'))
+@callback(
+    Output('player-name-dropdown', 'options'),
+    Input('player-name-lookup', 'data')
+)
 def player_dropdown_options_stat_page(player_name_lookup):
     player_name_lookup = jsonpickle.decode(json.loads(player_name_lookup))
     return [{"label" : x, "value" : player_name_lookup[x]} for x in sorted(player_name_lookup.keys())]
 
-@callback(Output(component_id='player-filter', component_property= 'options'),
-            Input(component_id='player-name-lookup', component_property='data'))
+@callback(
+    Output('player-filter', 'options'),
+    Input('player-name-lookup', 'data')
+)
 def player_dropdown_options_match_page(player_name_lookup):
     player_name_lookup = jsonpickle.decode(json.loads(player_name_lookup))
     options = [{"label" : "All", "value" : "All"}]
     options += [{"label" : x, "value" : player_name_lookup[x]} for x in sorted(player_name_lookup.keys())]
     return options
 
-@callback(Output(component_id='elo-filter', component_property= 'options'),
-            Input(component_id='player-name-lookup', component_property='data'))
+@callback(
+Output('elo-filter', 'options'),
+Input('player-name-lookup', 'data')
+)
 def player_dropdown_options_match_page(player_name_lookup):
     player_name_lookup = jsonpickle.decode(json.loads(player_name_lookup))
     return [{"label" : x, "value" : player_name_lookup[x]} for x in sorted(player_name_lookup.keys())]
 
-@callback(Output("full-elo-table", "children"),
-Input("player-dict", "data"))
+@callback(
+Output("full-elo-table", "children"),
+Input("player-dict", "data")
+)
 def full_elo_table(player_dict):
 
     player_dict = jsonpickle.decode(json.loads(player_dict))
@@ -131,8 +138,10 @@ def full_elo_table(player_dict):
         **data_table_non_editable_kwargs
     )
 
-@callback(Output("elo-hiscores-table", "children"),
-Input("player-dict", "data"))
+@callback(
+Output("elo-hiscores-table", "children"),
+Input("player-dict", "data")
+)
 def elo_hiscores(player_dict):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     d = {player : max(player_dict[player].elo_history) for player in player_dict}
@@ -148,11 +157,13 @@ def elo_hiscores(player_dict):
         **data_table_non_editable_kwargs
     )
 
-@callback(Output(component_id='scatter', component_property= 'figure'),
-        [Input(component_id='player-name-dropdown', component_property= 'value'),
-        Input(component_id='stat-name-dropdown', component_property= 'value'),
-        Input(component_id="n-recent-matches", component_property="value"),
-        Input("player-dict", "data")])
+@callback(
+    Output('scatter', 'figure'),
+    Input('player-name-dropdown', 'value'),
+    Input('stat-name-dropdown', 'value'),
+    Input("n-recent-matches", "value"),
+    Input("player-dict", "data")
+)
 def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict):
 
     player_dict = jsonpickle.decode(json.loads(player_dict))
@@ -185,11 +196,13 @@ def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches
 
     return fig
 
-@callback(Output(component_id='stat-table', component_property= 'children'),
-            [Input(component_id='player-name-dropdown', component_property= 'value'),
-            Input(component_id='stat-name-dropdown', component_property= 'value'),
-            Input(component_id="n-recent-matches", component_property="value"),
-            Input("player-dict", "data")])
+@callback(
+    Output('stat-table', 'children'),
+    Input('player-name-dropdown', 'value'),
+    Input('stat-name-dropdown', 'value'),
+    Input("n-recent-matches", "value"),
+    Input("player-dict", "data")
+)
 def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict, denominator_stat = None):
     
     player_dict = jsonpickle.decode(json.loads(player_dict))
@@ -207,11 +220,13 @@ def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, 
         **data_table_non_editable_kwargs
     )
 
-@callback(Output(component_id='match-choices', component_property= 'options'),
-            Output("match-choices", "value"),
-            Input(component_id='player-filter', component_property='value'),
-            Input("match-dict", "data"),
-            Input("match-list", "data"))
+@callback(
+    Output('match-choices', 'options'),
+    Output("match-choices", "value"),
+    Input('player-filter', 'value'),
+    Input("match-dict", "data"),
+    Input("match-list", "data")
+)
 def match_selector(player_filter, match_dict, match_list):
 
     match_dict = jsonpickle.decode(json.loads(match_dict))
@@ -229,10 +244,12 @@ def match_selector(player_filter, match_dict, match_list):
 
     return (ops, ops[0]["value"])
 
-@callback(Output(component_id='scoreboard-container', component_property= 'children'),
-            [Input(component_id='match-choices', component_property= 'value'),
-            Input("player-dict", "data"),
-            Input("match-dict", "data")])
+@callback(
+    Output('scoreboard-container', 'children'),
+    Input('match-choices', 'value'),
+    Input("player-dict", "data"),
+    Input("match-dict", "data")
+)
 def display_scoreboard(chosen_match, player_dict, match_dict):
 
     player_dict = jsonpickle.decode(json.loads(player_dict))
@@ -297,11 +314,13 @@ def display_scoreboard(chosen_match, player_dict, match_dict):
    
 
 
-@callback(Output(component_id='linear-regression-table', component_property= 'children'),
-            [Input(component_id='player_name_dropdown', component_property= 'value'),
-            Input(component_id='stat_name_dropdown', component_property= 'value'),
-            Input(component_id="n_recent_matches", component_property="value"),
-            Input("player-dict", "data")])
+@callback(
+    Output('linear-regression-table', 'children'),
+    Input('player_name_dropdown', 'value'),
+    Input('stat_name_dropdown', 'value'),
+    Input("n_recent_matches", "value"),
+    Input("player-dict", "data")
+)
 def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict, per_round = False):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     per_round = True
@@ -319,9 +338,11 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
         **data_table_non_editable_kwargs
         )
 
-@callback(Output(component_id='elo-div', component_property= 'children'),
-            [Input(component_id='player-name-dropdown', component_property= 'value'),
-            Input("player-dict", "data")])
+@callback(
+    Output('elo-div', 'children'),
+    Input('player-name-dropdown', 'value'),
+    Input("player-dict", "data")
+)
 def elo_table(player_name_dropdown, player_dict):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     d = {player : player_dict[player].elo for player in player_name_dropdown}
@@ -337,10 +358,12 @@ def elo_table(player_name_dropdown, player_dict):
         **data_table_non_editable_kwargs
         )
 
-@callback(Output(component_id='match-explorer-h3', component_property= 'children'),
-            [Input(component_id='player-filter', component_property='value'),
+@callback(
+    Output('match-explorer-h3', 'children'),
+    Input('player-filter', 'value'),
     Input("match-dict", "data"),
-    Input("match-list", "data"),])
+    Input("match-list", "data")
+)
 def match_explorer_h3_func(player_filter, match_dict, match_list):
     match_dict = jsonpickle.decode(json.loads(match_dict))
     match_list = jsonpickle.decode(json.loads(match_list))
@@ -360,9 +383,11 @@ def match_explorer_h3_func(player_filter, match_dict, match_list):
         html.H3(f"Match Explorer: {len(ops)} matches found")
     ]
 
-@callback(Output(component_id='match-create', component_property='children'),
-            [Input(component_id = 'elo-filter', component_property='value'),
-            Input("player-dict", "data")])
+@callback(
+    Output('match-create', 'children'),
+    Input('elo-filter', 'value'),
+    Input("player-dict", "data")
+)
 def match_create(players, player_dict):
     player_dict = jsonpickle.decode(json.loads(player_dict))
     player_data = [player_dict[player] for player in players]
@@ -538,19 +563,22 @@ def submit(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, matc
             logging.debug("Fetch Cancelled")
             raise dash.exceptions.PreventUpdate
         q.enqueue(fetch_func, hub_id, job_id = id_, job_timeout = 600)
+        # log process id in dcc.Store
+        return {"id": id_}
     elif ctx.triggered[0]["prop_id"] == "update-button.n_clicks":
         if ctx.triggered[0]["prop_id"] != "update-button.n_clicks":
             raise dash.exceptions.PreventUpdate
         q.enqueue(update_func, hub_id, player_dict, match_dict, match_list, job_id = id_)
+        # log process id in dcc.Store
+        return {"id": id_}
     elif ctx.triggered[0]["prop_id"] == "data-upload.contents":
         print("Master upload")
         q.enqueue(upload_func, uploaded_data, job_id = id_)
-    else:
-        return {}
-        raise dash.exceptions.PreventUpdate
+        # log process id in dcc.Store
+        return {"id": id_}
+    raise dash.exceptions.PreventUpdate
 
     # log process id in dcc.Store
-    return {"id": id_}
 
 @callback(
     Output("data-retrieve-msg", "children"),
@@ -572,7 +600,7 @@ def retrieve_output(n, submitted):
     if n and submitted:
         try:
             job = Job.fetch(submitted["id"], connection=conn)
-            logging.debug(f"JOB: {job}")
+            logging.debug(f"JOB: {job.result}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
                 msg = job.result[0]
@@ -622,10 +650,11 @@ def retrieve_output(n, submitted):
 
 @callback(
     Output("interval", "disabled"),
-    [Input("submitted-store", "data"), Input("finished-store", "data")],
+    Input("submitted-store", "data"), 
+    Input("finished-store", "data")
 )
 def disable_interval(submitted, finished):
-    print(finished)
+    logging.debug(f"Disabled finished: {finished}")
     if submitted:
         if finished and submitted["id"] == finished["id"]:
             # most recently submitted job has finished, no need for interval
