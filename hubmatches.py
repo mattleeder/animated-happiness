@@ -3,6 +3,7 @@ from match import Match
 from player import Player
 
 import logging
+from rq import get_current_job
 
 class HubMatches:
 
@@ -28,7 +29,7 @@ class HubMatches:
         match_id_list : list
                 A list containing the IDs of the matches.
         """
-        
+
         url = f"https://open.faceit.com/data/v4/hubs/{self.hub_id}/matches?type=past&offset={offset}&limit={limit}"
         response = requests.get(url, headers = {"Authorization" : "Bearer " + self.api_key})
         data = response.json()
@@ -37,7 +38,6 @@ class HubMatches:
         
         for item in data["items"]:
             match_id_list.append(item["match_id"])
-        
         return match_id_list
 
     def get_full_match_list(self, offset, limit):
@@ -96,12 +96,20 @@ class HubMatches:
         """
         Updates Player objects and creates Match objects for all matches.
         """
+        job = get_current_job()
+        job.meta["progress"] = job.meta.get("progress", 0)
+        job.save_meta()
         
         match_id_list = self.get_full_match_list(offset, limit)
+
+        job.meta["length"] = len(match_id_list)
+        job.save_meta()
         
         for match_id in match_id_list[::-1]: # Which way?
             logging.debug(match_id)
             self.parse_match(match_id, player_dict, match_dict)
+            job.meta["progress"] += 1
+            job.save_meta()
 
         return match_id_list
         

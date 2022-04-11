@@ -475,18 +475,24 @@ def update_func(ctx, hub_id, player_dict, match_dict, match_list):
 
 
 def upload_func(data):
-    print("Uploading")
+    logging.debug("Uploading")
+    
+    job = get_current_job()
+    job.meta["progress"] = "Starting Upload"
+    job.save_meta()
 
     content_type, content_string = data.split(',')
     decoded = base64.b64decode(content_string)
-    # df = pd.read_pickle(io.BytesIO(decoded))
-
     data = pickle.load(io.BytesIO(decoded))
+    
+    job.meta["progress"] = "Data decoded"
+    job.save_meta()
 
     player_dict = data[0]
     match_dict = data[1]
     match_list = data[2]
     player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
+    job.meta["progress"] = f"Assignment completed, {len(match_list)} matches found"
     # default_player = sorted(list(player_dict.keys()))[0]
     logging.debug(f"Upload contains {len(match_list)} matches")
 
@@ -617,8 +623,10 @@ def retrieve_output(n, submitted):
                 )
 
             # job is still running, get progress and update progress bar
+            progress = job.meta.get("progress", 0)
+            length = job.meta.get("length", 0)
             return (
-                "In progress",
+                f"In progress: {progress} matches out of {length}",
                 dash.no_update,
                 dash.no_update,
                 dash.no_update,
