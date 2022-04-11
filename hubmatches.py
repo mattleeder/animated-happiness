@@ -31,7 +31,6 @@ class HubMatches:
         
         url = f"https://open.faceit.com/data/v4/hubs/{self.hub_id}/matches?type=past&offset={offset}&limit={limit}"
         response = requests.get(url, headers = {"Authorization" : "Bearer " + self.api_key})
-        response.close()
         data = response.json()
         
         match_id_list = []

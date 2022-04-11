@@ -28,10 +28,6 @@ logging.basicConfig(level = logging.DEBUG)
 
 q = Queue(connection=conn)
 
-Result = namedtuple(
-    "Result", ["msg", "player_dict", "match_dict", "match_list", "player_name_lookup", "progress", "collapse_is_open", "finished_data"]
-)
-
 load_dotenv()
 api_key = os.environ["API_KEY"]
 offset = 0
