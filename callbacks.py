@@ -411,7 +411,6 @@ def fetch_func(hub_id):
     match_list = hub.full_match_loop(offset, actual_limit, player_dict, match_dict)
     player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
     # default_player = list(player_dict.keys())[0]
-    logging.debug(player_dict)
     print("Fetch Finished")
     return (
         f"Found {len(match_list)} matches",
@@ -464,6 +463,7 @@ def upload_func(data):
     match_list = data[2]
     player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
     # default_player = sorted(list(player_dict.keys()))[0]
+    logging.debug(f"Upload contains {len(match_list)} matches")
 
     return (
         f"Upload contains {len(match_list)} matches",
@@ -572,6 +572,7 @@ def retrieve_output(n, submitted):
     if n and submitted:
         try:
             job = Job.fetch(submitted["id"], connection=conn)
+            logging.debug(f"JOB: {job}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
                 msg = job.result[0]
