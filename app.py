@@ -4,8 +4,9 @@ import flask
 from layouts import stat_page, match_page, elo_page, match_balance_page, elo_high_score_page, data_retrieve_page
 import callbacks
 
-server = flask.Flask(__name__)
+# server = flask.Flask(__name__)
 app = Dash(__name__, suppress_callback_exceptions = True)
+server = app.server
 
 colours = {
     "background" : "#272b30",
