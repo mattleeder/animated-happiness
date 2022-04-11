@@ -1,10 +1,8 @@
 from dash import Dash, dcc, html, Input, Output, callback
-import flask
 
 from layouts import stat_page, match_page, elo_page, match_balance_page, elo_high_score_page, data_retrieve_page
 import callbacks
 
-# server = flask.Flask(__name__)
 app = Dash(__name__, suppress_callback_exceptions = True)
 server = app.server
 
@@ -12,21 +10,6 @@ colours = {
     "background" : "#272b30",
     "text" : "#FFFFFF"
 }
-
-# navbar = dbc.NavbarSimple(
-#     children=[
-#             dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact')),
-#             dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
-#             dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
-#             dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
-#             dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
-#             dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact')),
-#         ],
-#         brand="Brand",
-#         brand_href="",
-#         color="primary",
-#         dark=True,
-#     )
 
 content = html.Div(id="page-content", children = [], style = {"background-color" : colours["background"]})
 

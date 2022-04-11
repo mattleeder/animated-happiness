@@ -551,7 +551,6 @@ def submit(fetch_clicks, update_clicks, upload_clicks, hub_id, player_dict, matc
     # log process id in dcc.Store
     return {"id": id_}
 
-"msg", "player_dict", "match_dict", "match_list", "player_name_lookup"
 @callback(
     Output("data-retrieve-msg", "children"),
     Output("player-dict", "data"),
