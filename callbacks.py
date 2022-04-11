@@ -600,7 +600,6 @@ def retrieve_output(n, submitted):
     if n and submitted:
         try:
             job = Job.fetch(submitted["id"], connection=conn)
-            logging.debug(f"JOB: {job.result}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
                 msg = job.result[0]
@@ -618,7 +617,6 @@ def retrieve_output(n, submitted):
                 )
 
             # job is still running, get progress and update progress bar
-            print(submitted)
             return (
                 "In progress",
                 dash.no_update,
