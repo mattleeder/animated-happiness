@@ -411,6 +411,7 @@ def fetch_func(hub_id):
     match_list = hub.full_match_loop(offset, actual_limit, player_dict, match_dict)
     player_name_lookup = {player.name : player.player_id for player in player_dict.values()}
     # default_player = list(player_dict.keys())[0]
+    logging.debug(player_dict)
     print("Fetch Finished")
     return (
         f"Found {len(match_list)} matches",
