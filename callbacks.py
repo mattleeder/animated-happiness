@@ -609,11 +609,17 @@ def retrieve_output(n, submitted):
             logging.debug(f"Job status: {job.get_status()}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
+                logging.debug("Attempting to retrieve job results")
                 msg = job.result[0]
+                logging.debug("Retrieved msg")
                 player_dict = job.result[1]
+                logging.debug("Retrieved player_dict")
                 match_dict = job.result[2]
+                logging.debug("Retrieved match_dict")
                 match_list = job.result[3]
+                logging.debug("Retrieved match_list")
                 player_name_lookup = job.result[4]
+                logging.debug("Attempting to return results")
                 return (
                     msg,
                     player_dict,
