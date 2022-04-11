@@ -606,6 +606,7 @@ def retrieve_output(n, submitted):
     if n and submitted:
         try:
             job = Job.fetch(submitted["id"], connection=conn)
+            logging.debug(f"Job status: {job.get_status()}")
             if job.get_status() == "finished":
                 # job is finished, return result, and store id
                 msg = job.result[0]
@@ -626,7 +627,7 @@ def retrieve_output(n, submitted):
             progress = job.meta.get("progress", 0)
             length = job.meta.get("length", 0)
             return (
-                f"In progress: {progress} matches out of {length}",
+                f"In progress: {progress} matches out of {length}, job status {job.get_status()}, last_hearbeat {job.last_heartbeat}",
                 dash.no_update,
                 dash.no_update,
                 dash.no_update,
