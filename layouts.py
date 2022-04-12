@@ -150,23 +150,58 @@ elo_high_score_page = html.Div([
 
 
 data_retrieve_page = html.Div([
+    html.Br(),
     html.Div([
-        dcc.Input(id="hub-id", type="text", placeholder="", debounce=True),
-    ]),
-    html.Div([
-        html.Button("Download Dashboard Data", id="download-button"),
-        dcc.Download(id="download-output")
-    ]),
-    html.Div([
-        html.Button("Fetch Dashboard Data", id="fetch-button"),
-    ]),
-    html.Div([
-        html.Button("Update Dashboard Data", id="update-button"),
-    ]),
-    html.Div([
-        dcc.Upload(id = "data-upload", children = [
-            html.Button("Data Upload", id = "data-upload-button")
-        ]),
-    ]),
-    html.Div(id = "data-retrieve-msg")
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H2(["Instructions"])
+                ]),
+                html.P(["If you are fetching data from scratch, copy your hub id into the input box and press the fetch data button. \
+                        To upload existing data, click the upload button. If you need to update this data, after it is uploaded \
+                        or fetched, copy your hub id into the input box and click the update button. To download the data for late use \
+                        simply click the download button."])
+            ]),
+            html.Br(),
+            dbc.Card([
+                dbc.CardBody([
+                    dbc.Row([
+                            dbc.Input(id="hub-id", type="text", placeholder = "Faceit Hub ID", debounce=True),
+                    ]),
+                    html.Br(),
+                    dbc.Row([
+                        dbc.Button("Fetch Dashboard Data", id="fetch-button", className="me-1"),
+                    ]),
+                    dbc.Row([
+                        dbc.Button("Update Dashboard Data", id="update-button", className="me-1"),
+                    ]),
+                ]),
+            ]),
+            html.Br(),
+            dbc.Card([
+                dbc.CardBody([
+                    dcc.Upload(id = "data-upload", children = [
+                        dbc.Row([
+                            dbc.Button("Data Upload", id = "data-upload-button", className="me-1")
+                        ])
+                    ])
+                ])
+            ]),
+            html.Br(),
+            dbc.Card([
+                dbc.CardBody([
+                    html.Div(id = "data-retrieve-msg"),
+                ])
+            ]),
+            html.Br(),
+            dbc.Card([
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Button("Download Dashboard Data", id="download-button", className="me-1"),
+                        dcc.Download(id="download-output")
+                    ]),
+                ])
+            ])
+        ], width = 4)
+    ])
 ])

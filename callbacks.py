@@ -79,12 +79,12 @@ def render_navbar(match_dict, match_list):
     return [
         dbc.NavbarSimple(
             children=[
-                dbc.NavItem(dbc.NavLink("Page 1", href="/page-1", active='exact')),
-                dbc.NavItem(dbc.NavLink("Page 2", href="/page-2", active='exact')),
-                dbc.NavItem(dbc.NavLink("Page 3", href="/page-3", active='exact')),
-                dbc.NavItem(dbc.NavLink("Page 4", href="/page-4", active='exact')),
-                dbc.NavItem(dbc.NavLink("Page 5", href="/page-5", active='exact')),
-                dbc.NavItem(dbc.NavLink("Page 6", href="/page-6", active='exact')),
+                dbc.NavItem(dbc.NavLink("Stats Explorer", href="/stats", active='exact')),
+                dbc.NavItem(dbc.NavLink("Match Explorer", href="/match-explorer", active='exact')),
+                dbc.NavItem(dbc.NavLink("Current Elo", href="/current-elo", active='exact')),
+                dbc.NavItem(dbc.NavLink("Match Create", href="/match-create", active='exact')),
+                dbc.NavItem(dbc.NavLink("Elo Hi-Scores", href="/elo-hi-scores", active='exact')),
+                dbc.NavItem(dbc.NavLink("Get Data", href="/data", active='exact')),
             ],
             brand=f"CSGO Dashboard - Number of matches: {len(match_list)}, average rating: {avg_rating}",
             brand_href="",

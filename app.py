@@ -32,12 +32,12 @@ app.layout = html.Div([
 )
 def render_page_content(pathname):
     page_dict = {
-        "/page-1" : stat_page,
-        "/page-2" : match_page,
-        "/page-3" : elo_page,
-        "/page-4" : match_balance_page,
-        "/page-5" : elo_high_score_page,
-        "/page-6" : data_retrieve_page,
+        "/stats" : stat_page,
+        "/match-explorer" : match_page,
+        "/current-elo" : elo_page,
+        "/match-create" : match_balance_page,
+        "/elo-hi-scores" : elo_high_score_page,
+        "/data" : data_retrieve_page,
     }
     return page_dict.get(pathname, None)
 
