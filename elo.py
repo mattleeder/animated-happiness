@@ -1,5 +1,8 @@
 from itertools import combinations
 import pandas as pd
+import os
+
+api_key = os.environ["API_KEY"]
 
 class Elo:
     
@@ -12,8 +15,8 @@ class Elo:
         self.match_stats = match_stats
         self.team_one = team_one
         self.team_two = team_two
-        self.team_one_elo = sum([player_dict[player].elo for player in self.team_one]) / len(self.team_one)
-        self.team_two_elo = sum([player_dict[player].elo for player in self.team_two]) / len(self.team_two)
+        self.team_one_elo = sum([player_dict[player]["elo"] for player in self.team_one]) / len(self.team_one)
+        self.team_two_elo = sum([player_dict[player]["elo"] for player in self.team_two]) / len(self.team_two)
         self._match_elo = self._match_elo()
         self.team_one_elo_win = self._team_elo_win(self.team_one)
         self.team_two_elo_win = self._team_elo_win(self.team_two)
@@ -28,7 +31,7 @@ class Elo:
         all_players.extend(self.team_two)
         total_elo = 0
         for player in all_players:
-            total_elo += self.player_dict[player].elo
+            total_elo += self.player_dict[player]["elo"]
         return total_elo / len(all_players)
 
     def _team_elo_win(self, team):
@@ -41,7 +44,7 @@ class Elo:
         elo_scaling = (standard_elo_reward - min_elo_reward) / max_allowed_difference
         team_elo = 0
         for player in team:
-            team_elo += self.player_dict[player].elo
+            team_elo += self.player_dict[player]["elo"]
         team_elo /= len(team)
         team_elo_difference = team_elo - self._match_elo
         team_elo_reward = max(min(standard_elo_reward - (team_elo_difference * elo_scaling), max_elo_reward), min_elo_reward)
@@ -84,7 +87,7 @@ class Elo:
 
         max_elo_diff = self.max_elo_difference # If you are 400 elo above match elo, target increased by 50%, 400 below target reduced by 50%
 
-        player_elo_diff = self.player_dict[player].elo - self._match_elo
+        player_elo_diff = self.player_dict[player]["elo"] - self._match_elo
         target_multiplier = max(min(1 + (player_elo_diff / (max_elo_diff * 2)), max_elo_diff), -max_elo_diff)      
         return self.performance_average * target_multiplier
 
@@ -115,9 +118,9 @@ class Elo:
 
     @classmethod
     def even_match(self, players):
-        player_names = set([player.name for player in players])
-        player_elos = [player.elo for player in players]
-        elo_lookup = {player.name : player.elo for player in players}
+        player_names = set([player["name"] for player in players])
+        player_elos = [player["elo"] for player in players]
+        elo_lookup = {player["name"] : player["elo"] for player in players}
 
         target = sum(player_elos) / 2
         team_elo = []

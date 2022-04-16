@@ -11,7 +11,6 @@ class Player:
         
         self.name = None
         self.player_id = player_id
-        self.name_history = []
         self.stats = {"Match ID" : [],
                       "Number of Rounds" : [],
                       "Map" : [],
@@ -30,21 +29,34 @@ class Player:
         self.elo = 1000
         self.elo_history = []
 
-    def stat_parse(self, match_id, total_rounds, match_map, statistics):
+    def to_json(self):
+
+        return {
+            f"{self.player_id}" : {
+                "name" : self.name,
+                "stats" : self.stats,
+                "elo" : self.elo,
+                "elo_history" : self.elo_history
+            }
+        }
+
+    @staticmethod
+    def stat_parse(data, match_id, total_rounds, match_map, statistics):
             
-        self.stats["Match ID"].append(match_id)
-        self.stats["Number of Rounds"].append(int(total_rounds))
-        self.stats["Map"].append(match_map)
+        data["stats"]["Match ID"].append(match_id)
+        data["stats"]["Number of Rounds"].append(int(total_rounds))
+        data["stats"]["Map"].append(match_map)
 
         for statistic in statistics:
-            self.stats[statistic].append(float(statistics[statistic]))
-            
-    def avg_last_n_matches(self, n, stat, per_round = False):
+            data["stats"][statistic].append(float(statistics[statistic]))
+    
+    @staticmethod
+    def avg_last_n_matches(data, n, stat, per_round = False):
         
-        total = sum(self.stats[stat][0:n])
+        total = sum(data["stats"][stat][0:n])
         
         if per_round:
-            total_rounds = sum(self.stats["Number of Rounds"][0:n])
+            total_rounds = sum(data["stats"]["Number of Rounds"][0:n])
             total /= total_rounds
             
             return total
@@ -52,19 +64,21 @@ class Player:
         total /= n
         return total
 
-    def stats_last_n_matches(self, n, stat, per_round = False):
+    @staticmethod
+    def stats_last_n_matches(data, n, stat, per_round = False):
 
-        stats = self.stats[stat][0:n]
+        stats = data["stats"][stat][0:n]
 
         if per_round:
-            rounds = self.stats["Number of Rounds"][0:n]
+            rounds = data["stats"]["Number of Rounds"][0:n]
             return [s / r for s, r in zip(stats, rounds)]
         
         return stats
-        
-    def stat_ratio_last_n_matches(self, n, numerator_stat, denominator_stat):
-        numerator = sum(self.stats[numerator_stat][0:n])
-        denominator = sum(self.stats[denominator_stat][0:n])
+    
+    @staticmethod
+    def stat_ratio_last_n_matches(data, n, numerator_stat, denominator_stat):
+        numerator = sum(data["stats"][numerator_stat][0:n])
+        denominator = sum(data["stats"][denominator_stat][0:n])
         
         return numerator / denominator
 
@@ -83,33 +97,50 @@ class Player:
         df = pd.DataFrame(d)
 
         return df
-
-    @property
-    def winrate(self):
-        pass
     
     @classmethod
-    def order_players_by_stat(self, player_dict, list_of_players, n, numerator_stat, denominator_stat = None):
+    def order_players_by_stat(cls, player_dict, list_of_players, n, numerator_stat, denominator_stat = None):
         
         order_dict = {}
         
         if denominator_stat == None:
             for player in list_of_players:
-                avg_stat = player_dict[player].avg_last_n_matches(n, numerator_stat)
+                avg_stat = cls.avg_last_n_matches(player_dict[player], n, numerator_stat)
                 order_dict[avg_stat] = player
         else:
             for player in list_of_players:
-                avg_stat = player_dict[player].stat_ratio_last_n_matches(n, numerator_stat, denominator_stat)
+                avg_stat = cls.stat_ratio_last_n_matches(player_dict[player], n, numerator_stat, denominator_stat)
                 order_dict[avg_stat] = player
 
         return order_dict
 
-    @classmethod
-    def players_df(self):
-        pass
+    @staticmethod
+    def json_init():
+        return {
+            "name" : None,
+            "stats" : {
+                "Match ID" : [],
+                "Number of Rounds" : [],
+                "Map" : [],
+                'Deaths': [],
+                'K/R Ratio': [],
+                'MVPs': [],
+                'Headshots': [],
+                'Triple Kills': [],
+                'Result': [],
+                'Assists': [],
+                'Penta Kills': [],
+                'Headshots %': [],
+                'K/D Ratio': [],
+                'Quadro Kills': [],
+                'Kills': []
+            },
+            "elo" : 1000,
+            "elo_history" : []
+        }
 
     @classmethod
-    def parse_match_data(match_id, match_data, player_dict):
+    def parse_match_data(cls, match_id, match_data, player_dict):
         """
         Retrieves player stats from match data and adds them to player_dict.
 
@@ -141,13 +172,21 @@ class Player:
         
         for team in match_data["teams"]:
             for player in team["players"]:
-                    if player["player_id"] not in player_dict.keys():
-                        player_dict[player["player_id"]] = Player(player["player_id"])
-                    player_dict[player["player_id"]].name = player["nickname"]
-                    player_dict[player["player_id"]].stat_parse(match_id, total_rounds, match_map, player["player_stats"])
+                if player["player_id"] not in player_dict.keys():
+                    player_dict[player["player_id"]] = cls.json_init()
+                player_dict[player["player_id"]]["name"] = player["nickname"]
+                cls.stat_parse(player_dict[player["player_id"]], match_id, total_rounds, match_map, player["player_stats"])
 
         return None
 
-    @classmethod
-    def from_player_id(self, player_id):
-        pass
+    def json_update(self, data):
+
+        if self.player_id not in data:
+            data.update(self.to_json())
+            return None
+
+        data[self.player_id]["name"] = self.name
+        data[self.player_id]["elo"] = self.elo
+        data[self.player_id]["elo_history"].append(self.elo)
+        for key, val in self.stats.items():
+            data[self.player_id]["stats"][key].append(val[-1])

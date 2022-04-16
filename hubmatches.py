@@ -5,11 +5,20 @@ from player import Player
 import logging
 from rq import get_current_job
 
+import os
+
+api_key = os.environ["API_KEY"]
+
 class HubMatches:
 
-    def __init__(self, hub_id, api_key):
+    def __init__(self, hub_id, player_json = None, match_json = None):
         self.hub_id = hub_id
-        self.api_key = api_key
+        self.player_json = player_json
+        self.match_json = match_json
+        if player_json is None:
+            self.player_json = {}
+        if match_json is None:
+            self.match_json = {}
 
     def _limited_match_list(self, offset, limit):
         """
@@ -31,7 +40,7 @@ class HubMatches:
         """
 
         url = f"https://open.faceit.com/data/v4/hubs/{self.hub_id}/matches?type=past&offset={offset}&limit={limit}"
-        response = requests.get(url, headers = {"Authorization" : "Bearer " + self.api_key})
+        response = requests.get(url, headers = {"Authorization" : "Bearer " + api_key})
         data = response.json()
         
         match_id_list = []
@@ -81,18 +90,18 @@ class HubMatches:
             
         return full_match_list
 
-    def parse_match(self, match_id, player_dict, match_dict):
+    def parse_match(self, match_id):
 
         """
         Updates Player objects and creates Match objects for a specific match.
         """
         
-        current_match = Match(match_id, self.api_key)
+        current_match = Match(match_id)
         current_match_data = current_match.match_stats()
-        Player.parse_match_data(current_match_data, player_dict)
-        Match.full_parse(self.api_key, match_id, current_match_data, player_dict, match_dict)
+        Player.parse_match_data(match_id, current_match_data, self.player_json)
+        Match.full_parse(match_id, current_match_data, self.match_json, self.player_json)
 
-    def full_match_loop(self, offset, limit, player_dict, match_dict):
+    def full_match_loop(self, offset, limit):
         """
         Updates Player objects and creates Match objects for all matches.
         """
@@ -107,13 +116,13 @@ class HubMatches:
         
         for match_id in match_id_list[::-1]: # Which way?
             logging.debug(match_id)
-            self.parse_match(match_id, player_dict, match_dict)
+            self.parse_match(match_id)
             job.meta["progress"] += 1
             job.save_meta()
 
         return match_id_list
         
-    def partial_match_loop(self, offset, limit, player_dict, match_dict, old_match_id_list):
+    def partial_match_loop(self, offset, limit, old_match_id_list):
         
         """
         Checks the hub matches and compares the IDs to matches already parsed to only get
@@ -132,6 +141,6 @@ class HubMatches:
         
         for match_id in new_match_id_list:
             logging.debug(match_id)
-            self.parse_match(match_id, player_dict, match_dict)
+            self.parse_match(match_id)
 
         return match_id_list
