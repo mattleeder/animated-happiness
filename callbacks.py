@@ -1,4 +1,4 @@
-from dash import Input, Output, State, callback, dash_table, dcc, html
+from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html
 import dash_bootstrap_components as dbc
 import dash
 import base64
@@ -241,6 +241,29 @@ def match_selector(player_filter, match_dict, match_list):
 
     return (ops, ops[0]["value"])
 
+
+# clientside_callback(
+#     """
+#     function(chosen_match, player_json, match_json) {
+#         var dict = new Object();
+#         for(var player in player_json) {
+#             dict[player] = player['name']
+#         }
+#         return Array(
+#             dict,
+#             match_json[chosen_match]
+#             );
+#     }
+#     """,
+#     Output("player-map", "data"),
+#     Output("match-data", "data"),
+#     Input('match-choices', 'value'),
+#     Input("player-dict", "data"),
+#     Input("match-dict", "data")
+# )
+
+import time
+
 @callback(
     Output('scoreboard-container', 'children'),
     Input('match-choices', 'value'),
@@ -248,6 +271,7 @@ def match_selector(player_filter, match_dict, match_list):
     Input("match-dict", "data")
 )
 def display_scoreboard(chosen_match, player_dict, match_dict):
+    start = time.perf_counter()
 
     if chosen_match is None:
         return None
@@ -257,11 +281,17 @@ def display_scoreboard(chosen_match, player_dict, match_dict):
             html.H3("Error, match not found")
         ]
 
+    post_get = time.perf_counter()
+
+    mapper = {player_id : player_data["name"] for player_id, player_data in player_dict.items()}
+
+    post_map = time.perf_counter()
+
     team_one_data, team_two_data = Match.scoreboard_data(match_dict[chosen_match])
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
     team_two_df = pd.DataFrame(team_two_data).T.reset_index()
-    team_one_df["index"] = team_one_df["index"].map({player_id : player_data["name"] for player_id, player_data in player_dict.items()})
-    team_two_df["index"] = team_two_df["index"].map({player_id : player_data["name"] for player_id, player_data in player_dict.items()})
+    team_one_df["index"] = team_one_df["index"].map(mapper)
+    team_two_df["index"] = team_two_df["index"].map(mapper)
     team_one_df = team_one_df.rename(columns = {"index" : "Player"})
     team_two_df = team_two_df.rename(columns = {"index" : "Player"})
     cols_order= ["Player", "Kills", "Assists", "Deaths", "Headshots", "Headshots %", "K/D Ratio", "K/R Ratio", "MVPs", "Triple Kills", "Quadro Kills", "Penta Kills", "Result"]
@@ -270,8 +300,12 @@ def display_scoreboard(chosen_match, player_dict, match_dict):
 
     player_elos = pd.DataFrame.from_dict(current_match["player_elo_data"]).T.reset_index()
     player_elos = player_elos.round({'Elo': 0, 'Elo Change': 1, "Performance Target" : 2, "Performance Actual" : 2})
-    player_elos["index"] = player_elos["index"].map({player_id : player_data["name"] for player_id, player_data in player_dict.items()})
+    player_elos["index"] = player_elos["index"].map(mapper)
     player_elos = player_elos.rename(columns = {"index" : "Player"})
+
+    pre_return = time.perf_counter()
+
+    logging.debug(f"TIMER: display_scoreboard, get runtime {post_get - start:0.4f}s, map runtime {post_map - post_get:0.4f}s, calcs runtime {pre_return - post_map:0.4f}s")
 
     return [
         html.H3(f"Team One - Average Elo : {round(current_match['team_one_elo'])}"),
