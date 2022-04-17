@@ -218,26 +218,17 @@ def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, 
         **data_table_non_editable_kwargs
     )
 
-@callback(
+clientside_callback(
+    ClientsideFunction(
+        namespace = "clientside",
+        function_name = "get_match_choices"
+    ),
     Output('match-choices', 'options'),
     Output("match-choices", "value"),
     Input('player-filter', 'value'),
     Input("match-dict", "data"),
     Input("match-list", "data")
 )
-def match_selector(player_filter, match_dict, match_list):
-
-    if player_filter == "All":
-        return ([{"label" : x, "value" : x} for x in match_list], [{"label" : x, "value" : x} for x in match_list][0]["value"])
-
-    ops = []
-    for x in match_list:
-        match = match_dict.get(x, None)
-        if match is not None:
-            if player_filter in match_dict[x]["players"]:
-                ops.append({"label" : x, "value" : x})
-
-    return (ops, ops[0]["value"])
 
 clientside_callback(
     ClientsideFunction(
