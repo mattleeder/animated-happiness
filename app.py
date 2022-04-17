@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output, callback
+from dash import Dash, dcc, html, Input, Output, callback, clientside_callback, ClientsideFunction
 
 from layouts import stat_page, match_page, elo_page, match_balance_page, elo_high_score_page, data_retrieve_page
 import callbacks

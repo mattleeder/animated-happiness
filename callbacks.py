@@ -1,17 +1,15 @@
-from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html
+from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html, ClientsideFunction
 import dash_bootstrap_components as dbc
 import dash
 import base64
 import pandas as pd
 import plotly.express as px
-import matchlistpickle
-import pickle
 from elo import Elo
 import io
 import os
 from hubmatches import HubMatches
 from player import Player
-import jsonpickle
+
 import json
 from dotenv import load_dotenv
 
@@ -241,41 +239,28 @@ def match_selector(player_filter, match_dict, match_list):
 
     return (ops, ops[0]["value"])
 
-
-# clientside_callback(
-#     """
-#     function(chosen_match, player_json, match_json) {
-#         var dict = new Object();
-#         for(var player in player_json) {
-#             dict[player] = player['name']
-#         }
-#         return Array(
-#             dict,
-#             match_json[chosen_match]
-#             );
-#     }
-#     """,
-#     Output("player-map", "data"),
-#     Output("match-data", "data"),
-#     Input('match-choices', 'value'),
-#     Input("player-dict", "data"),
-#     Input("match-dict", "data")
-# )
+clientside_callback(
+    ClientsideFunction(
+        namespace = "clientside",
+        function_name = "get_chosen_match_data"
+    ),
+    Output("chosen-match-data", "data"),
+    Input('match-choices', 'value'),
+    Input("match-dict", "data")
+)
 
 import time
 
 @callback(
     Output('scoreboard-container', 'children'),
-    Input('match-choices', 'value'),
-    Input("player-dict", "data"),
-    Input("match-dict", "data")
+    Input('chosen-match-data', 'data'),
+    Input("player-dict", "data")
 )
-def display_scoreboard(chosen_match, player_dict, match_dict):
+def display_scoreboard(match_data, player_dict):
     start = time.perf_counter()
 
-    if chosen_match is None:
-        return None
-    current_match = match_dict.get(chosen_match, None)
+    chosen_match = match_data[0]
+    current_match = match_data[1]
     if current_match is None:
         return [
             html.H3("Error, match not found")
@@ -287,7 +272,7 @@ def display_scoreboard(chosen_match, player_dict, match_dict):
 
     post_map = time.perf_counter()
 
-    team_one_data, team_two_data = Match.scoreboard_data(match_dict[chosen_match])
+    team_one_data, team_two_data = Match.scoreboard_data(current_match)
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
     team_two_df = pd.DataFrame(team_two_data).T.reset_index()
     team_one_df["index"] = team_one_df["index"].map(mapper)
@@ -353,7 +338,7 @@ def display_scoreboard(chosen_match, player_dict, match_dict):
     Input("player-dict", "data")
 )
 def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict, per_round = False):
-    player_dict = jsonpickle.decode(json.loads(player_dict))
+
     per_round = True
     d = {player : player_dict[player].linear_regression(stat_name_dropdown, n_recent_matches, per_round).round(2) for player in player_name_dropdown}
     if per_round:

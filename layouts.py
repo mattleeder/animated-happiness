@@ -60,6 +60,7 @@ stat_page = html.Div([
 ])
 
 match_page = html.Div([
+    dcc.Store(id = 'chosen-match-data'),
     dbc.CardBody([
         dbc.Row([
             dbc.Col([
