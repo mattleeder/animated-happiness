@@ -98,6 +98,24 @@ def render_navbar(match_dict, match_list):
 def player_dropdown_options_stat_page(player_name_lookup):
     return [{"label" : x, "value" : player_name_lookup[x]} for x in sorted(player_name_lookup.keys())]
 
+# clientside_callback(
+#     ClientsideFunction(
+#         namespace = "clientside",
+#         function_name = "player_dropdown_options_stat_page"
+#     ),
+#     Output('player-name-dropdown', 'options'),
+#     Input('player-name-lookup', 'data')
+# )
+
+clientside_callback(
+    ClientsideFunction(
+        namespace = "clientside",
+        function_name = "get_elo_data"
+    ),
+    Output('elo-data', 'data'),
+    Input('player-dict', 'data')
+)
+
 @callback(
     Output('player-filter', 'options'),
     Input('player-name-lookup', 'data')
@@ -116,22 +134,21 @@ def player_dropdown_options_match_page(player_name_lookup):
 
 @callback(
     Output("full-elo-table", "children"),
-    Input("player-dict", "data")
+    Input("elo-data", "data")
 )
-def full_elo_table(player_dict):
+def full_elo_table(data):
 
-    d = {player : player_dict[player]["elo"] for player in player_dict}
-    data = [{"Player" : player_dict[key]["name"], "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
     df = pd.DataFrame(data)
-    df["Rank"] = df["Elo"].rank(ascending = False, method = "first")
+    df["Rank"] = df["Current Elo"].rank(ascending = False, method = "first")
+    df["Current Elo"] = df["Current Elo"].round()
     df = df.sort_values(by = "Rank", ascending = True)
-    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Current Elo", "id" : "Current Elo"}, {"name" : "Player", "id" : "Player"}]
 
 
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
-        data = df.to_dict("records"),
+        data = df[["Rank", "Player", "Current Elo"]].to_dict("records"),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs
@@ -139,51 +156,43 @@ def full_elo_table(player_dict):
 
 @callback(
     Output("elo-hiscores-table", "children"),
-    Input("player-dict", "data")
+    Input("elo-data", "data")
 )
-def elo_hiscores(player_dict):
+def elo_hiscores(data):
 
-    d = {player : max(player_dict[player]["elo_history"]) for player in player_dict}
-    data = [{"Player" : player_dict[key]["name"], "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
-    df = pd.DataFrame(data)
-    df["Rank"] = df["Elo"].rank(ascending = False, method = "first")
+    df = pd.DataFrame(data)[["Player", "Max Elo"]]
+    df["Rank"] = df["Max Elo"].rank(ascending = False, method = "first")
+    df["Max Elo"] = df["Max Elo"].round()
     df = df.sort_values(by = "Rank", ascending = True)
-    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
+    columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Max Elo", "id" : "Max Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
-        data = df.to_dict("records"),
+        data = df[["Rank", "Player", "Max Elo"]].to_dict("records"),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs
     )
 
-@callback(
-    Output('scatter', 'figure'),
+clientside_callback(
+    ClientsideFunction(
+        namespace = "clientside",
+        function_name = "get_player_stat_data"
+    ),
+    Output('stat-data', 'data'),
     Input('player-name-dropdown', 'value'),
     Input('stat-name-dropdown', 'value'),
     Input("n-recent-matches", "value"),
     Input("player-dict", "data")
 )
-def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict):
 
-    n = n_recent_matches
-
-    data = {}
-    data["Player"] = []
-    data["Match Number"] = []
-    data[stat_name_dropdown] = []
-
-    for player in player_name_dropdown:
-
-        matches = min(n, len(player_dict[player]["stats"]["Match ID"]))
-        data["Player"].extend([player_dict[player]["name"]] * matches)
-        data["Match Number"].extend(list(range(n - matches, n)))
-
-        stat_list = player_dict[player]["stats"][stat_name_dropdown][-n:]
-        data[stat_name_dropdown].extend(stat_list)
-
+@callback(
+    Output('scatter', 'figure'),
+    Input('stat-data', 'data'),
+    Input('stat-name-dropdown', 'value'),
+)
+def player_stat_graph(data, stat_name_dropdown):
     df = pd.DataFrame(data)
 
     fig = px.line(df,x = "Match Number", y = stat_name_dropdown, color = "Player")
@@ -198,25 +207,25 @@ def player_stat_graph(player_name_dropdown, stat_name_dropdown, n_recent_matches
 
 @callback(
     Output('stat-table', 'children'),
-    Input('player-name-dropdown', 'value'),
+    Input('stat-data', 'data'),
     Input('stat-name-dropdown', 'value'),
-    Input("n-recent-matches", "value"),
-    Input("player-dict", "data")
 )
-def stat_order_grid(player_name_dropdown, stat_name_dropdown, n_recent_matches, player_dict, denominator_stat = None):
+def stat_order_grid(data, stat_name_dropdown):
 
-    d = Player.order_players_by_stat(player_dict, player_name_dropdown, n_recent_matches, stat_name_dropdown, denominator_stat)
-    data = [{stat_name_dropdown : round(key,2), "Player" : player_dict[d[key]]["name"]} for key in sorted(d.keys(), reverse = True)]
+    df = pd.DataFrame(data)
+    table_data = df.groupby("Player").mean().reset_index()[["Player", stat_name_dropdown]]
     columns = [{"name" : stat_name_dropdown, "id" : stat_name_dropdown}, {"name" : "Player", "id" : "Player"}]
 
-    return dash_table.DataTable(
+    return [
+        dash_table.DataTable(
         id = "player-stat-table", 
         columns = columns, 
-        data = data,
+        data = table_data.to_dict('records'),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs
-    )
+        )
+    ]
 
 clientside_callback(
     ClientsideFunction(
@@ -347,18 +356,17 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
 
 @callback(
     Output('elo-div', 'children'),
-    Input('player-name-dropdown', 'value'),
-    Input("player-dict", "data")
+    Input('stat-data', 'data'),
 )
-def elo_table(player_name_dropdown, player_dict):
-    d = {player : player_dict[player]["elo"] for player in player_name_dropdown}
-    data = [{"Player" : player_dict[key]["name"], "Elo" : round(d[key])} for key in sorted(d.keys(), reverse = True)]
+def elo_table(data):
+    df = pd.DataFrame(data)
+    table_data = df.groupby("Player").max().reset_index()[["Player", "Elo"]]
     columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
-        data = data,
+        data = table_data.to_dict('records'),
         sort_action = "native",
         sort_mode = "single",
         **data_table_non_editable_kwargs

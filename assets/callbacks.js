@@ -23,9 +23,46 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 }
             }
             return Array(
-                ops,
+                ops,    
                 ops[0]["value"]
             )
+        },
+        get_player_stat_data: function(player_name_dropdown, stat_name_dropdown, n, player_json) {
+            var data = {};
+            data["Match Number"] = [];
+            data["Player"] = [];
+            data["Elo"] = [];
+            data[stat_name_dropdown] = [];
+
+            for (const player of player_name_dropdown) {
+                var n_matches = Math.min(n, player_json[player]["stats"]["Match ID"].length);
+                var name = player_json[player]["name"];
+                data["Player"].push(...Array(n_matches).fill(name));
+                data["Match Number"].push(...Array(n_matches).fill().map((_, i) => i + n - n_matches));
+                data["Elo"].push(...Array(n_matches).fill(Math.round(player_json[player]["elo"])));
+                stat_list = player_json[player]["stats"][stat_name_dropdown].slice(-n);
+                data[stat_name_dropdown].push(...stat_list);
+
+            }
+            console.log(data);
+            return data;
+        },
+        get_elo_data: function(player_json) {
+            var data = {};
+            data["Player"] = [];
+            data["Current Elo"] = [];
+            data["Max Elo"] = [];
+            for (const player of Object.keys(player_json)) {
+                data["Player"].push(player_json[player]["name"]);
+                data["Current Elo"].push(player_json[player]["elo"]);
+                data["Max Elo"].push(Math.max(...player_json[player]["elo_history"]));
+            }
+            return data;
+        },
+        player_dropdown_options_stat_page: function(player_name_lookup) {
+            player_name_lookup = player_name_lookup.map(({ key}) => (key));
+            player_name_lookup.sort();
+            return player_name_lookup.map(x => ({"label" : x, "value" : x}));
         }
     }
 });

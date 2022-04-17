@@ -20,6 +20,7 @@ app.layout = html.Div([
     dcc.Store(id = "player-name-lookup", storage_type='session'),
     dcc.Store(id = "submitted-store"),
     dcc.Store(id = "finished-store"),
+    dcc.Store(id = 'elo-data'),
     dcc.Interval(id="interval", interval=1000),
     dcc.Location(id='url'),
     html.Div(id = "navbar"),

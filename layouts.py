@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 from player import Player
 
 stat_page = html.Div([
+    dcc.Store(id = "stat-data"),
     html.Div([
         dbc.CardBody([
             dbc.Row([
