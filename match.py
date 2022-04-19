@@ -85,7 +85,6 @@ class Match:
 
         return team_one_data, team_two_data
 
-
     @staticmethod
     def full_parse(match_id, match_data, match_json, player_json):
         if match_data is None:

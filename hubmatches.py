@@ -6,8 +6,41 @@ import logging
 from rq import get_current_job
 
 import os
+import cProfile, pstats, io
+from pstats import SortKey
+
+import aiohttp
+import asyncio
+import time
 
 api_key = os.environ["API_KEY"]
+
+async def get_match(session, url):
+    async with session.get(url, headers = {"Authorization" : "Bearer " + api_key}) as resp:
+        match = await resp.json()
+        try:
+            return match["rounds"][0]
+        except:
+            return None
+
+async def match_loop(match_list):
+
+    async with aiohttp.ClientSession() as session:
+
+        tasks = []
+        for match_id in match_list:
+            url = f"https://open.faceit.com/data/v4/matches/{match_id}/stats"
+            tasks.append(asyncio.ensure_future(get_match(session, url)))
+
+        match_data = await asyncio.gather(*tasks)
+        for match in match_data:
+            try:
+                print(match["match_id"])
+            except TypeError:
+                print("404")
+        print(len(match_data))
+    
+    return match_data
 
 class HubMatches:
 
@@ -90,16 +123,16 @@ class HubMatches:
             
         return full_match_list
 
-    def parse_match(self, match_id):
+    def parse_match(self, match_id, match_data):
 
         """
         Updates Player objects and creates Match objects for a specific match.
         """
         
         current_match = Match(match_id)
-        current_match_data = current_match.match_stats()
-        Player.parse_match_data(match_id, current_match_data, self.player_json)
-        Match.full_parse(match_id, current_match_data, self.match_json, self.player_json)
+        # current_match_data = current_match.match_stats()
+        Player.parse_match_data(match_id, match_data, self.player_json)
+        Match.full_parse(match_id, match_data, self.match_json, self.player_json)
 
     def full_match_loop(self, offset, limit):
         """
@@ -108,15 +141,18 @@ class HubMatches:
         job = get_current_job()
         job.meta["progress"] = job.meta.get("progress", 0)
         job.save_meta()
-        
+     
         match_id_list = self.get_full_match_list(offset, limit)
+        match_data = asyncio.run(match_loop(match_id_list))
+
+        logging.debug(match_data)
 
         job.meta["length"] = len(match_id_list)
         job.save_meta()
         
-        for match_id in match_id_list[::-1]: # Which way?
+        for match_id, data in zip(match_id_list[::-1], match_data[::-1]): # Which way?
             logging.debug(match_id)
-            self.parse_match(match_id)
+            self.parse_match(match_id, data)
             job.meta["progress"] += 1
             job.save_meta()
 
@@ -138,9 +174,10 @@ class HubMatches:
         
         new_match_id_list = match_id_list[:length_diff]
         new_match_id_list.reverse() # Reversing to maintain order, is this right?
+        new_match_data = asyncio.run(match_loop(new_match_id_list))
         
-        for match_id in new_match_id_list:
+        for match_id, data in zip(new_match_id_list, new_match_data):
             logging.debug(match_id)
-            self.parse_match(match_id)
+            self.parse_match(match_id, data)
 
         return match_id_list

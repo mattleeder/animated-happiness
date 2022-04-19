@@ -42,9 +42,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 data["Elo"].push(...Array(n_matches).fill(Math.round(player_json[player]["elo"])));
                 stat_list = player_json[player]["stats"][stat_name_dropdown].slice(-n);
                 data[stat_name_dropdown].push(...stat_list);
-
             }
-            console.log(data);
             return data;
         },
         get_elo_data: function(player_json) {

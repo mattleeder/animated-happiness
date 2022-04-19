@@ -1,3 +1,4 @@
+from turtle import st
 from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html, ClientsideFunction
 import dash_bootstrap_components as dbc
 import dash
@@ -214,6 +215,7 @@ def stat_order_grid(data, stat_name_dropdown):
 
     df = pd.DataFrame(data)
     table_data = df.groupby("Player").mean().reset_index()[["Player", stat_name_dropdown]]
+    df = df.sort_values(by = stat_name_dropdown)
     columns = [{"name" : stat_name_dropdown, "id" : stat_name_dropdown}, {"name" : "Player", "id" : "Player"}]
 
     return [
@@ -361,6 +363,7 @@ def linear_regression(player_name_dropdown, stat_name_dropdown, n_recent_matches
 def elo_table(data):
     df = pd.DataFrame(data)
     table_data = df.groupby("Player").max().reset_index()[["Player", "Elo"]]
+    df = df.sort_values(by = "Elo")
     columns = [{"name" : "Elo", "id" : "Elo"}, {"name" : "Player", "id" : "Player"}]
 
     return dash.dash_table.DataTable(
