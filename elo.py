@@ -1,6 +1,6 @@
 from itertools import combinations
-import pandas as pd
 import os
+import pandas as pd
 
 api_key = os.environ["API_KEY"]
 
@@ -140,3 +140,6 @@ class Elo:
         data = pd.DataFrame({"Elo Difference" : team_elo, "Team 1" : team_list, "Team 2" : team_two_list}, index = idx).sort_values(by = "Elo Difference", ascending = True).head(5)
 
         return data
+
+if __name__ == "__main__":
+    pass

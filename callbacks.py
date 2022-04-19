@@ -1,27 +1,20 @@
+import base64
 from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html, ClientsideFunction
 import dash_bootstrap_components as dbc
 import dash
-import base64
+from dotenv import load_dotenv
+from elo import Elo
+from faceit import HubMatches, Match, Player
+import ujson as json
+import logging
+import os
 import pandas as pd
 import plotly.express as px
-from elo import Elo
-import io
-import os
-from hubmatches import HubMatches
-from player import Player
-
-import json
-from dotenv import load_dotenv
-
 from rq import Queue, get_current_job
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
-from worker import conn
 import uuid
-
-import logging
-
-from match import Match
+from worker import conn
 
 logging.basicConfig(level = logging.DEBUG)
 
@@ -30,7 +23,7 @@ q = Queue(connection=conn)
 load_dotenv()
 api_key = os.environ["API_KEY"]
 offset = 0
-actual_limit = 10_000
+actual_limit = 50_000
 
 data_table_non_editable_kwargs = {
     'style_as_list_view' : True,
@@ -144,7 +137,6 @@ def full_elo_table(data):
     df = df.sort_values(by = "Rank", ascending = True)
     columns = [{"name" : "Rank", "id" : "Rank"}, {"name" : "Current Elo", "id" : "Current Elo"}, {"name" : "Player", "id" : "Player"}]
 
-
     return dash.dash_table.DataTable(
         id = "table-output",
         columns = columns,
@@ -194,9 +186,7 @@ clientside_callback(
 )
 def player_stat_graph(data, stat_name_dropdown):
     df = pd.DataFrame(data)
-
     fig = px.line(df,x = "Match Number", y = stat_name_dropdown, color = "Player")
-        
     fig.update_layout(
         template='plotly_dark',
         plot_bgcolor= 'rgba(0, 0, 0, 0)',
@@ -250,28 +240,21 @@ clientside_callback(
     Input("match-dict", "data")
 )
 
-import time
-
 @callback(
     Output('scoreboard-container', 'children'),
     Input('chosen-match-data', 'data'),
     Input("player-dict", "data")
 )
 def display_scoreboard(match_data, player_dict):
-    start = time.perf_counter()
-
     chosen_match = match_data[0]
     current_match = match_data[1]
+    logging.debug(current_match)
     if current_match is None:
         return [
             html.H3("Error, match not found")
         ]
 
-    post_get = time.perf_counter()
-
     mapper = {player_id : player_data["name"] for player_id, player_data in player_dict.items()}
-
-    post_map = time.perf_counter()
 
     team_one_data, team_two_data = Match.scoreboard_data(current_match)
     team_one_df = pd.DataFrame(team_one_data).T.reset_index()
@@ -288,10 +271,6 @@ def display_scoreboard(match_data, player_dict):
     player_elos = player_elos.round({'Elo': 0, 'Elo Change': 1, "Performance Target" : 2, "Performance Actual" : 2})
     player_elos["index"] = player_elos["index"].map(mapper)
     player_elos = player_elos.rename(columns = {"index" : "Player"})
-
-    pre_return = time.perf_counter()
-
-    logging.debug(f"TIMER: display_scoreboard, get runtime {post_get - start:0.4f}s, map runtime {post_map - post_get:0.4f}s, calcs runtime {pre_return - post_map:0.4f}s")
 
     return [
         html.H3(f"Team One - Average Elo : {round(current_match['team_one_elo'])}"),
@@ -638,3 +617,6 @@ def disable_interval(submitted, finished):
         return False
     # no jobs submitted yet, disable interval
     return True
+
+if __name__ == "__main__":
+    pass

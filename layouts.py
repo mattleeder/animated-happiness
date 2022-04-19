@@ -1,6 +1,6 @@
 from dash import dash, dcc, html
 import dash_bootstrap_components as dbc
-from player import Player
+from faceit import Player
 
 stat_page = html.Div([
     dcc.Store(id = "stat-data"),
@@ -207,3 +207,6 @@ data_retrieve_page = html.Div([
         ], width = 4)
     ])
 ])
+
+if __name__ == "__main__":
+    pass
