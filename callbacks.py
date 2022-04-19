@@ -1,4 +1,3 @@
-from turtle import st
 from dash import Input, Output, State, callback, clientside_callback, dash_table, dcc, html, ClientsideFunction
 import dash_bootstrap_components as dbc
 import dash
